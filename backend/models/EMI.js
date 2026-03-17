@@ -1,5 +1,5 @@
 //now we import monoose here
-import {model,Schema} from "mongoose";
+import mongoose, {model,Schema} from "mongoose";
 // Define the EMI schema
 const emiSchema=new Schema({
     loanAmount:{
@@ -22,9 +22,14 @@ const emiSchema=new Schema({
         type:Date,
         required:true
     },
-    status:{
-        type:String,
-        required:true
+    isActive:{
+        type:Boolean,
+        default:true
+    },
+    userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        required: true
     }
 });
 const EMI =model('EMI', emiSchema);

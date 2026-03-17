@@ -1,21 +1,120 @@
-### users data to post
+# ### users data to post
+# POST http://localhost:4000/auth-api/auth
+# Content-Type: application/json
+
+# {
+#     "username":"Sidhvi",
+#     "email":"akulasidhvi@gmail.com",
+#     "number":9963046249,
+#     "password":"Sidhvi@6106",
+#     "monthlyIncome":100000
+# }
+
+# ### posting the transactions data
+# POST http://localhost:4000/transactions-api/transactions
+
+# ###getting transaction details
+# GET http://localhost:4000/transactions-api/transactions
+
+# ### getting analysis of the tranactions
+# GET http://localhost:4000/analytics-api/analytics
+
+### user registration
 POST http://localhost:4000/auth-api/auth
 Content-Type: application/json
 
 {
-    "username":"Sidhvi",
-    "email":"akulasidhvi@gmail.com",
-    "number":9963046249,
-    "password":"Sidhvi@6106",
-    "monthlyIncome":100000
+    "username":"maxi",
+    "email":"maxi@gmail.com",
+    "number":"6281055110",
+    "password":"maxi@123",
+    "monthlyIncome":170000
+}
+
+### user login
+POST http://localhost:4000/auth-api/auth/login
+Content-Type: application/json
+
+{
+    "email":"maxi@gmail.com",
+    "password":"maxi@123"
+}
+
+### fetching user profile
+GET http://localhost:4000/auth-api/auth/profile
+
+### edit user profile
+PUT http://localhost:4000/auth-api/auth/profile
+Content-Type: application/json
+
+{
+  "username": "max_Hawkins",
+  "number":"6281055110",
+  "monthlyIncome": 200000
+}
+
+### change password
+PUT http://localhost:4000/auth-api/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "max@123",
+  "newPassword": "max@1234"
 }
 
 ### posting the transactions data
 POST http://localhost:4000/transactions-api/transactions
+Content-Type: application/json
+
+{
+  "amount": 1500,
+  "category": "Electronics",
+  "date": "2026-03-16",
+  "description": "earpods purchased"
+}
 
 ###getting transaction details
 GET http://localhost:4000/transactions-api/transactions
 
-### getting analysis of the tranactions
-GET http://localhost:4000/analytics-api/analytics
+###get transaction id
+GET http://localhost:4000/transactions-api/transactions/69b8f39d331f07f10a9856fe
 
+###edit transaction by id
+PUT http://localhost:4000/transactions-api/transactions/69b8f39d331f07f10a9856fe
+Content-Type: application/json
+
+{
+  "amount": 17000,
+  "category": "Electronics",
+  "date": "2026-03-16",
+  "description": "headphones purchased"
+}
+
+### delete transaction
+PATCH http://localhost:4000/transactions-api/transactions/69b8f39d331f07f10a9856fe
+Content-Type: application/json
+
+{
+    "isActive":true
+}
+
+### getting analysis of the tranactions
+GET http://localhost:4000/analytics-api/overall-analysis
+
+### posting the emi details
+POST http://localhost:4000/emi-api/emi
+Content-Type: application/json
+
+{
+  "loanAmount": 1000000,
+  "interestRate": 5.5,
+  "tenureMonths": 15,
+  "startDate": "2024-06-01",
+  "dueDate": "2029-06-01"
+}
+
+### getting the emi details
+GET http://localhost:4000/emi-api/emi
+
+### logout
+GET http://localhost:4000/auth-api/logout

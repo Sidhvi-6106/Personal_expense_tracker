@@ -12,7 +12,7 @@ const userSchema = new Schema({
   email: {
     type: String,
     required: [true,"Email is Required"],
-    unique: true
+    unique:[true, "Duplicate email not allowed"]
   },
 
   //we need to hash the password before saving it to the database, so we will use bcryptjs for that
@@ -20,9 +20,13 @@ const userSchema = new Schema({
     type: String,
     required: [true,"Password is Required "],
   },
-  number:{
-    type:Number,
-    required:[true,"Phone Number is Required "]
+  number: {
+    type: String,
+    required: [true, "Phone Number is Required"],
+    validate: {
+      validator: v => /^[6-9][0-9]{9}$/.test(v),
+      message: "Enter a valid 10-digit Indian phone number"
+    }
   },
   monthlyIncome: {
     type: Number,
@@ -41,7 +45,6 @@ userSchema.pre('save', async function() {
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
   } catch (err) {
     throw err;
   }
