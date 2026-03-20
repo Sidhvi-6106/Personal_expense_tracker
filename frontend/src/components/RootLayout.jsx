@@ -5,14 +5,15 @@ import Navbar from './Navbar';
 import { useFinanceContext } from '../context/FinanceContext';
 
 const RootLayout = () => {
-  const { token, fetchTransactions, fetchEmis, settings } = useFinanceContext();
+  const { token, fetchTransactions, fetchEmis, settings, refreshNotifications } = useFinanceContext();
 
   useEffect(() => {
     if (token) {
       fetchTransactions();
       fetchEmis();
     }
-  }, [fetchEmis, fetchTransactions, token]);
+    refreshNotifications();
+  }, [fetchEmis, fetchTransactions, refreshNotifications, token]);
 
   return (
     <div className={`flex h-screen overflow-hidden ${settings.theme === "dark" ? "bg-slate-950 text-white" : "bg-slate-50"}`}>

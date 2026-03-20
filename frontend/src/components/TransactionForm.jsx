@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ScanLine } from "lucide-react";
 import { useFinanceContext } from "../context/FinanceContext";
+import toast from "react-hot-toast";
 
 const categories = [
   "Food",
@@ -46,6 +47,16 @@ const TransactionForm = () => {
   const handleScanReceipt = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file for receipt scanning.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Receipt image must be 5 MB or smaller.");
+      return;
+    }
 
     const imageData = await readFileAsDataUrl(file);
     const scanned = await scanReceipt(imageData, file.name);
@@ -167,6 +178,9 @@ const TransactionForm = () => {
         <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
           <p className="text-sm font-semibold text-emerald-800">Receipt extracted</p>
           <p className="text-xs text-emerald-700 mt-1 line-clamp-3">{formData.receipt.extractedText}</p>
+          <p className="text-xs text-emerald-700 mt-2">
+            Confidence: {typeof formData.receipt.confidence === "number" ? `${Math.round(formData.receipt.confidence * 100)}%` : "Not provided"}
+          </p>
         </div>
       ) : null}
 

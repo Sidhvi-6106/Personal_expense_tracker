@@ -31,6 +31,9 @@ const emiSchema=new Schema({
         ref: "User",
         required: true
     }
+},{
+    timestamps:true,
+    versionKey:false
 });
 const EMI =model('EMI', emiSchema);
 export default EMI;

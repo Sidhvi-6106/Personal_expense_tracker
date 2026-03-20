@@ -4,6 +4,19 @@ import { checkUser } from "../middleware/checkUser.js";
 
 export const aiRouter = exp.Router();
 
+const allowedCategories = [
+  "Food",
+  "Shopping",
+  "Travel",
+  "Utilities",
+  "Health",
+  "Entertainment",
+  "Electronics",
+  "Rent",
+  "Salary",
+  "Other"
+];
+
 const buildHeuristicSuggestions = ({ monthlyIncome, transactions }) => {
   const expenses = transactions.filter((item) => item.type !== "income");
   const income = transactions.filter((item) => item.type === "income");
@@ -63,6 +76,34 @@ const extractJson = (text) => {
     throw new Error("Model did not return valid JSON");
   }
   return JSON.parse(match[0]);
+};
+
+const normalizeReceiptPayload = (parsed = {}, filename = "") => {
+  const safeAmount = Number(parsed.amount);
+  const safeDate = parsed.date && !Number.isNaN(new Date(parsed.date).getTime())
+    ? new Date(parsed.date).toISOString().split("T")[0]
+    : new Date().toISOString().split("T")[0];
+  const safeCategory = allowedCategories.includes(parsed.category) ? parsed.category : "Other";
+  const confidence = typeof parsed.confidence === "number" ? parsed.confidence : null;
+
+  if (!safeAmount || safeAmount <= 0) {
+    throw new Error("Could not confidently extract a valid receipt amount. Please review the image and try again.");
+  }
+
+  return {
+    filename,
+    merchant: String(parsed.merchant || "").trim(),
+    amount: Number(safeAmount.toFixed(2)),
+    date: safeDate,
+    category: safeCategory,
+    description: String(parsed.description || "").trim(),
+    type: parsed.type === "income" ? "income" : "expense",
+    receipt: {
+      filename,
+      extractedText: String(parsed.extractedText || "").trim(),
+      confidence
+    }
+  };
 };
 
 const callOpenAI = async ({ prompt, imageData }) => {
@@ -177,23 +218,11 @@ Amount must be a number.
 
     const output = await callOpenAI({ prompt, imageData });
     const parsed = extractJson(output);
+    const normalized = normalizeReceiptPayload(parsed, filename || "");
 
     return res.status(200).json({
       message: "Receipt scanned successfully",
-      payload: {
-        filename: filename || "",
-        merchant: parsed.merchant || "",
-        amount: Number(parsed.amount) || 0,
-        date: parsed.date || new Date().toISOString().split("T")[0],
-        category: parsed.category || "Other",
-        description: parsed.description || "",
-        type: parsed.type === "income" ? "income" : "expense",
-        receipt: {
-          filename: filename || "",
-          extractedText: parsed.extractedText || "",
-          confidence: typeof parsed.confidence === "number" ? parsed.confidence : null
-        }
-      }
+      payload: normalized
     });
   } catch (err) {
     return res.status(400).json({

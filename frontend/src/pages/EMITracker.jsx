@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { useFinanceContext } from "../context/FinanceContext";
-import { CreditCard, Landmark } from "lucide-react";
+import { CreditCard, Landmark, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency } from "../utils/currencyFormatter";
 
 const initialEmi = {
+  _id: "",
   loanAmount: "",
   interestRate: "",
   tenureMonths: "",
@@ -22,7 +23,7 @@ const calculateMonthlyInstallment = (loanAmount, annualRate, tenureMonths) => {
 };
 
 const EMITracker = () => {
-  const { emis, addEmi, emiLoading } = useFinanceContext();
+  const { emis, addEmi, updateEmi, toggleEmi, emiLoading } = useFinanceContext();
   const [form, setForm] = useState(initialEmi);
 
   const previewInstallment = useMemo(
@@ -32,10 +33,21 @@ const EMITracker = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const success = await addEmi(form);
+    const success = form._id ? await updateEmi(form._id, form) : await addEmi(form);
     if (success) {
       setForm(initialEmi);
     }
+  };
+
+  const startEdit = (emi) => {
+    setForm({
+      _id: emi._id,
+      loanAmount: emi.loanAmount,
+      interestRate: emi.interestRate,
+      tenureMonths: emi.tenureMonths,
+      startDate: emi.startDate?.slice(0, 10),
+      dueDate: emi.dueDate?.slice(0, 10)
+    });
   };
 
   return (
@@ -43,7 +55,7 @@ const EMITracker = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Loan & EMI Tracker</h1>
-          <p className="text-slate-500 text-sm">Add EMI plans and track installments with real loan details.</p>
+          <p className="text-slate-500 text-sm">Add EMI plans and manage them with edit and delete controls.</p>
         </div>
         <div className="bg-rose-50 text-rose-600 p-3 rounded-2xl">
           <Landmark size={24} />
@@ -52,7 +64,7 @@ const EMITracker = () => {
 
       <div className="grid grid-cols-1 xl:grid-cols-[0.95fr_1.05fr] gap-6">
         <form onSubmit={handleSubmit} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-slate-800">Add EMI</h2>
+          <h2 className="text-lg font-bold text-slate-800">{form._id ? "Edit EMI" : "Add EMI"}</h2>
           <div className="grid grid-cols-2 gap-3">
             <input className="w-full px-4 py-3 rounded-xl border border-slate-200" type="number" placeholder="Loan amount" value={form.loanAmount} onChange={(e) => setForm({ ...form, loanAmount: e.target.value })} required />
             <input className="w-full px-4 py-3 rounded-xl border border-slate-200" type="number" placeholder="Interest rate %" value={form.interestRate} onChange={(e) => setForm({ ...form, interestRate: e.target.value })} required />
@@ -68,9 +80,16 @@ const EMITracker = () => {
             <input className="w-full px-4 py-3 rounded-xl border border-slate-200" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} required />
             <input className="w-full px-4 py-3 rounded-xl border border-slate-200" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} required />
           </div>
-          <button disabled={emiLoading} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-70">
-            {emiLoading ? "Saving EMI..." : "Save EMI"}
-          </button>
+          <div className="flex gap-3">
+            <button disabled={emiLoading} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-70">
+              {emiLoading ? "Saving EMI..." : form._id ? "Update EMI" : "Save EMI"}
+            </button>
+            {form._id ? (
+              <button type="button" onClick={() => setForm(initialEmi)} className="px-4 py-3 rounded-xl font-semibold bg-slate-100 text-slate-700">
+                Cancel
+              </button>
+            ) : null}
+          </div>
         </form>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -78,15 +97,23 @@ const EMITracker = () => {
             const monthlyInstallment = calculateMonthlyInstallment(emi.loanAmount, emi.interestRate, emi.tenureMonths);
             return (
               <div key={emi._id} className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden group">
-                <div className="relative z-10 flex justify-between items-start">
+                <div className="relative z-10 flex justify-between items-start gap-4">
                   <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-1">Active Installment</p>
                     <h3 className="text-lg font-bold mb-3">{formatCurrency(emi.loanAmount)} Loan</h3>
                     <p className="text-3xl font-bold text-indigo-400">{formatCurrency(monthlyInstallment)}</p>
                     <p className="text-xs text-slate-400 mt-2">{emi.interestRate}% interest • {emi.tenureMonths} months</p>
                   </div>
-                  <div className="bg-white/10 p-3 rounded-xl backdrop-blur-md">
-                    <CreditCard size={20} className="text-white" />
+                  <div className="flex flex-col gap-2">
+                    <div className="bg-white/10 p-3 rounded-xl backdrop-blur-md">
+                      <CreditCard size={20} className="text-white" />
+                    </div>
+                    <button onClick={() => startEdit(emi)} className="bg-white/10 p-2 rounded-xl hover:bg-white/20">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => toggleEmi(emi._id, false)} className="bg-white/10 p-2 rounded-xl hover:bg-rose-500/30">
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
 

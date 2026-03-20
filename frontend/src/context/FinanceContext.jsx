@@ -6,6 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const STORAGE_KEY = "expense-tracker-auth";
 const SETTINGS_KEY = "expense-tracker-settings";
 const BILLS_KEY = "expense-tracker-bills";
+const ALERTS_KEY = "expense-tracker-alerts";
 
 const readStorage = (key, fallback) => {
   try {
@@ -43,6 +44,72 @@ const applyTheme = (theme) => {
   }
 };
 
+const daysUntil = (dateString) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateString);
+  target.setHours(0, 0, 0, 0);
+  return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+};
+
+const monthKey = (value) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const currentMonthKey = () => monthKey(new Date());
+
+const calculateMonthlyExpenseTotal = (transactions, targetMonth = currentMonthKey()) =>
+  transactions
+    .filter((item) => item.type !== "income" && monthKey(item.date) === targetMonth)
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+const buildBillAlerts = (billReminders) =>
+  billReminders
+    .map((bill) => {
+      const remainingDays = daysUntil(bill.dueDate);
+      return {
+        id: `bill-${bill.id}`,
+        type: "bill",
+        title: bill.title,
+        message:
+          remainingDays < 0
+            ? `${bill.title} is overdue.`
+            : remainingDays === 0
+              ? `${bill.title} is due today.`
+              : `${bill.title} is due in ${remainingDays} day${remainingDays === 1 ? "" : "s"}.`,
+        dueDate: bill.dueDate,
+        amount: bill.amount,
+        severity: remainingDays <= 1 ? "high" : "medium",
+        remainingDays
+      };
+    })
+    .filter((alert) => alert.remainingDays <= 3);
+
+const buildBudgetAlerts = (transactions, monthlyIncome = 0) => {
+  const total = calculateMonthlyExpenseTotal(transactions);
+  if (!monthlyIncome || !total) return [];
+
+  const usage = total / monthlyIncome;
+  if (usage < 0.8) return [];
+
+  return [
+    {
+      id: `budget-${currentMonthKey()}`,
+      type: "budget",
+      title: "Monthly Budget Alert",
+      message:
+        usage >= 1
+          ? "You have exceeded your monthly budget."
+          : `You have used ${Math.round(usage * 100)}% of your monthly budget.`,
+      dueDate: new Date().toISOString(),
+      amount: total,
+      severity: usage >= 1 ? "high" : "medium",
+      remainingDays: 0
+    }
+  ];
+};
+
 applyTheme(storedSettings.theme);
 
 export const useFinanceContext = create((set, get) => ({
@@ -52,6 +119,7 @@ export const useFinanceContext = create((set, get) => ({
   emis: [],
   billReminders: storedBills,
   settings: storedSettings,
+  notifications: buildBillAlerts(storedBills),
   aiInsights: null,
   loading: false,
   authLoading: false,
@@ -69,11 +137,39 @@ export const useFinanceContext = create((set, get) => ({
     set({ user: null, token: null, transactions: [], aiInsights: null, emis: [] });
   },
 
+  refreshNotifications: () => {
+    const seenAlerts = readStorage(ALERTS_KEY, []);
+    const billAlerts = buildBillAlerts(get().billReminders);
+    const budgetAlerts = buildBudgetAlerts(get().transactions, get().user?.monthlyIncome || 0);
+    const alerts = [...budgetAlerts, ...billAlerts];
+    set({ notifications: alerts });
+
+    if (!get().settings.notifications) return;
+
+    const updatedSeen = [...seenAlerts];
+    let changed = false;
+
+    alerts.forEach((alert) => {
+      if (!updatedSeen.includes(alert.id)) {
+        toast(alert.message, {
+          icon: alert.severity === "high" ? "⏰" : "🔔"
+        });
+        updatedSeen.push(alert.id);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      localStorage.setItem(ALERTS_KEY, JSON.stringify(updatedSeen));
+    }
+  },
+
   updateSettings: (partialSettings) => {
     const nextSettings = { ...get().settings, ...partialSettings };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(nextSettings));
     applyTheme(nextSettings.theme);
     set({ settings: nextSettings });
+    get().refreshNotifications();
     toast.success("Settings updated");
   },
 
@@ -86,6 +182,7 @@ export const useFinanceContext = create((set, get) => ({
     const nextBills = [newBill, ...get().billReminders];
     localStorage.setItem(BILLS_KEY, JSON.stringify(nextBills));
     set({ billReminders: nextBills });
+    get().refreshNotifications();
     toast.success("Bill reminder added");
   },
 
@@ -93,6 +190,7 @@ export const useFinanceContext = create((set, get) => ({
     const nextBills = get().billReminders.filter((item) => item.id !== id);
     localStorage.setItem(BILLS_KEY, JSON.stringify(nextBills));
     set({ billReminders: nextBills });
+    get().refreshNotifications();
     toast.success("Bill reminder removed");
   },
 
@@ -135,6 +233,7 @@ export const useFinanceContext = create((set, get) => ({
     try {
       const res = await api.get("/auth-api/auth/profile", authHeaders(token));
       get().persistAuth(res.data.user, token);
+      get().refreshNotifications();
     } catch {
       get().clearAuth();
     }
@@ -148,6 +247,7 @@ export const useFinanceContext = create((set, get) => ({
     try {
       const res = await api.put("/auth-api/auth/profile", profileData, authHeaders(token));
       get().persistAuth(res.data.user, token);
+      get().refreshNotifications();
       toast.success("Profile updated");
       return true;
     } catch (err) {
@@ -179,6 +279,7 @@ export const useFinanceContext = create((set, get) => ({
     try {
       const res = await api.get("/transactions-api/transactions", authHeaders(token));
       set({ transactions: res.data.payload || [] });
+      get().refreshNotifications();
     } catch (err) {
       toast.error(err.response?.data?.message || "Could not load transactions");
     } finally {
@@ -205,6 +306,7 @@ export const useFinanceContext = create((set, get) => ({
       set((state) => ({
         transactions: [res.data.payload, ...state.transactions]
       }));
+      get().refreshNotifications();
       toast.success("Transaction added", { id: toastId });
       return true;
     } catch (err) {
@@ -232,6 +334,7 @@ export const useFinanceContext = create((set, get) => ({
           item._id === id ? res.data.payload : item
         )
       }));
+      get().refreshNotifications();
       toast.success("Transaction updated");
       return true;
     } catch (err) {
@@ -253,6 +356,7 @@ export const useFinanceContext = create((set, get) => ({
           ? state.transactions
           : state.transactions.filter((item) => item._id !== id)
       }));
+      get().refreshNotifications();
       toast.success(isActive ? "Transaction restored" : "Transaction deleted");
       return true;
     } catch (err) {
@@ -297,6 +401,49 @@ export const useFinanceContext = create((set, get) => ({
       return false;
     } finally {
       set({ emiLoading: false });
+    }
+  },
+
+  updateEmi: async (id, emiData) => {
+    const { token } = get();
+    if (!token) return false;
+
+    set({ emiLoading: true });
+    try {
+      const payload = {
+        ...emiData,
+        loanAmount: Number(emiData.loanAmount),
+        interestRate: Number(emiData.interestRate),
+        tenureMonths: Number(emiData.tenureMonths)
+      };
+      const res = await api.put(`/emi-api/emi/${id}`, payload, authHeaders(token));
+      set((state) => ({
+        emis: state.emis.map((item) => (item._id === id ? res.data.payload : item))
+      }));
+      toast.success("EMI updated");
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update EMI");
+      return false;
+    } finally {
+      set({ emiLoading: false });
+    }
+  },
+
+  toggleEmi: async (id, isActive) => {
+    const { token } = get();
+    if (!token) return false;
+
+    try {
+      await api.patch(`/emi-api/emi/${id}`, { isActive }, authHeaders(token));
+      set((state) => ({
+        emis: isActive ? state.emis : state.emis.filter((item) => item._id !== id)
+      }));
+      toast.success(isActive ? "EMI restored" : "EMI deleted");
+      return true;
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update EMI");
+      return false;
     }
   },
 

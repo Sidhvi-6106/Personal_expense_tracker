@@ -48,7 +48,9 @@ const BillReminder = () => {
         </form>
 
         <div className="grid gap-4">
-          {billReminders.length > 0 ? billReminders.map((bill) => (
+          {billReminders.length > 0 ? billReminders.map((bill) => {
+            const remainingDays = Math.ceil((new Date(bill.dueDate).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24));
+            return (
             <div key={bill.id} className="bg-white p-5 rounded-2xl border border-slate-100 flex items-center justify-between hover:shadow-md transition-all">
               <div className="flex items-center space-x-4">
                 <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl">
@@ -57,7 +59,7 @@ const BillReminder = () => {
                 <div>
                   <h3 className="font-bold text-slate-800 capitalize">{bill.title}</h3>
                   <p className="text-xs text-slate-400">{bill.category} • Due {new Date(bill.dueDate).toLocaleDateString()}</p>
-                  <p className="text-xs text-slate-400">{bill.frequency}</p>
+                  <p className="text-xs text-slate-400">{bill.frequency} • {remainingDays < 0 ? "Overdue" : remainingDays === 0 ? "Due today" : `${remainingDays} days left`}</p>
                 </div>
               </div>
               <div className="text-right flex items-center gap-3">
@@ -70,7 +72,8 @@ const BillReminder = () => {
                 </button>
               </div>
             </div>
-          )) : (
+          );
+          }) : (
             <div className="py-20 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
               <CalendarDays className="mx-auto text-slate-300 mb-3" />
               <p className="text-slate-400 italic">No bill reminders yet. Add your first recurring bill here.</p>
