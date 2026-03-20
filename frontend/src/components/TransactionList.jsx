@@ -1,7 +1,7 @@
-import React from 'react';
-import {useFinanceContext } from '../context/FinanceContext';
-import { formatDate } from '../utils/dateFormatter';
-import { formatCurrency } from '../utils/currencyFormatter';
+import React from "react";
+import { useFinanceContext } from "../context/FinanceContext";
+import { formatDate } from "../utils/dateFormatter";
+import { formatCurrency } from "../utils/currencyFormatter";
 
 const TransactionList = ({ limit }) => {
   const transactions = useFinanceContext((state) => state.transactions);
@@ -14,6 +14,7 @@ const TransactionList = ({ limit }) => {
           <tr className="text-slate-400 text-xs uppercase tracking-widest border-b border-slate-50">
             <th className="pb-4 font-semibold">Category</th>
             <th className="pb-4 font-semibold">Date</th>
+            <th className="pb-4 font-semibold">Type</th>
             <th className="pb-4 font-semibold text-right">Amount</th>
           </tr>
         </thead>
@@ -22,10 +23,16 @@ const TransactionList = ({ limit }) => {
             <tr key={t._id} className="group hover:bg-slate-50/50 transition-colors">
               <td className="py-4">
                 <p className="font-medium text-slate-700">{t.category}</p>
-                <p className="text-xs text-slate-400">{t.description || 'No description'}</p>
+                <p className="text-xs text-slate-400">{t.description || t.merchant || "No description"}</p>
               </td>
               <td className="py-4 text-sm text-slate-500">{formatDate(t.date)}</td>
-              <td className="py-4 text-right font-semibold text-slate-700">
+              <td className="py-4 text-sm capitalize text-slate-500">{t.type || "expense"}</td>
+              <td
+                className={`py-4 text-right font-semibold ${
+                  t.type === "income" ? "text-emerald-600" : "text-slate-700"
+                }`}
+              >
+                {t.type === "income" ? "+" : "-"}
                 {formatCurrency(t.amount)}
               </td>
             </tr>

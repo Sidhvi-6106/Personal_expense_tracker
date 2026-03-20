@@ -3,9 +3,10 @@ import User from "../models/User.js";
 
 export const checkUser = async (req, res, next) => {
   try {
-
-    const token = req?.cookies?.token;
-    console.log("Token from cookie:", token);
+    const bearerToken = req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : null;
+    const token = bearerToken || req?.cookies?.token;
 
     if (!token) {
       return res.status(401).json({ message: "No token provided" });
@@ -18,17 +19,8 @@ export const checkUser = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid user" });
     }
     req.user = user;
-    console.log("User id :", req.user._id);
-
-  next();
-    // if (req.user._id.toString() !== req.params.userid) {
-    // return res.status(401).json({
-    //   message: "Unauthorized user id not matched"
-    // });
-  }
-  
-
-   catch (err) {
+    next();
+  } catch (err) {
     return res.status(401).json({ message: err.message });
   }
 };

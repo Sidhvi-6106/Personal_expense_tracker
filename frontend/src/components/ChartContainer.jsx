@@ -4,10 +4,7 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const ChartContainer = ({ transactions }) => {
-  if (!transactions){
-    return 
-  }
+const ChartContainer = ({ transactions = [] }) => {
   // Group transactions by category
   const categoryTotals = transactions.reduce((acc, t) => {
     acc[t.category] = (acc[t.category] || 0) + Number(t.amount);
@@ -32,7 +29,7 @@ const ChartContainer = ({ transactions }) => {
   };
 
   return (
-    <div className="h-64 flex items-center justify-center">
+    <div className="h-52 max-w-sm mx-auto flex items-center justify-center">
       {transactions.length > 0 ? <Doughnut data={data} options={options} /> : <p className="text-slate-400">No data to display</p>}
     </div>
   );

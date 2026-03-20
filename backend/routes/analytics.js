@@ -7,23 +7,20 @@ import { checkUser } from '../middleware/checkUser.js';
 export const analyticsRouter = exp.Router();
 
 analyticsRouter.get('/overall-analysis', checkUser, async (req, res) => {
-
     try {
-
         const userId = new mongoose.Types.ObjectId(req.user._id);
 
-        // Transaction totals by category
         const transactionData = await Transaction.aggregate([
-            { $match: { userId: userId } },
+            { $match: { userId: userId, isActive: true } },
             {
                 $group: {
-                    _id: "$category",
-                    total: { $sum: "$amount" }
+                    _id: { category: "$category", type: "$type" },
+                    total: { $sum: "$amount" },
+                    count: { $sum: 1 }
                 }
             }
         ]);
 
-        // EMI totals
         const emiData = await EMI.aggregate([
             { $match: { userId: userId } },
             {
@@ -42,12 +39,9 @@ analyticsRouter.get('/overall-analysis', checkUser, async (req, res) => {
         });
 
     } catch (err) {
-
         res.status(500).json({
             message: "Error generating analysis",
             error: err.message
         });
-
     }
-
 });
