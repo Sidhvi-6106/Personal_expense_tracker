@@ -1,0 +1,99 @@
+### user registration
+POST http://localhost:4000/auth-api/auth
+Content-Type: application/json
+
+{
+    "username":"spu",
+    "email":"spu@gmail.com",
+    "number":"6281055110",
+    "password":"spu@123",
+    "monthlyIncome":170000
+}
+
+### user login
+POST http://localhost:4000/auth-api/auth/login
+Content-Type: application/json
+
+{
+    "email":"spu@gmail.com",
+    "password":"spu@1234"
+}
+
+### fetching user profile
+GET http://localhost:4000/auth-api/auth/profile
+
+### edit user profile
+PUT http://localhost:4000/auth-api/auth/profile
+Content-Type: application/json
+
+{
+  "username": "max_Hawkins",
+  "number":"6281055110",
+  "monthlyIncome": 200000
+}
+
+### change password
+PUT http://localhost:4000/auth-api/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "spu@123",
+  "newPassword": "spu@1234"
+}
+
+### posting the transactions data
+POST http://localhost:4000/transactions-api/transactions
+Content-Type: application/json
+
+{
+  "amount": 17000,
+  "category": "Electronics",
+  "date": "2026-03-16",
+  "description": "headphones purchased"
+}
+
+###getting transaction details
+GET http://localhost:4000/transactions-api/transactions
+
+###get transaction id
+GET http://localhost:4000/transactions-api/transactions/69b91930fe82d0fa8a59f2ed
+
+###edit transaction by id
+PUT http://localhost:4000/transactions-api/transactions/69b91930fe82d0fa8a59f2ed
+Content-Type: application/json
+
+{
+  "amount": 1000,
+  "category": "Electronics",
+  "date": "2026-03-16",
+  "description": "earphones purchased"
+}
+
+### delete transaction
+PATCH http://localhost:4000/transactions-api/transactions/69b91930fe82d0fa8a59f2ed
+Content-Type: application/json
+
+{
+    "isActive":true
+}
+
+### getting analysis of the tranactions
+GET http://localhost:4000/analytics-api/ai-analysis
+
+### posting the emi details
+POST http://localhost:4000/emi-api/emi
+Content-Type: application/json
+
+{
+  "loanAmount": 1000000,
+  "interestRate": 5.5,
+  "tenureMonths": 15,
+  "startDate": "2024-06-01",
+  "dueDate": "2029-06-01"
+}
+
+### getting the emi details
+GET http://localhost:4000/emi-api/emi
+
+### logout
+GET http://localhost:4000/auth-api/logout
