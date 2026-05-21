@@ -23,13 +23,14 @@ const ChartContainer = ({ transactions = [] }) => {
 
   const options = {
     cutout: '75%',
+    maintainAspectRatio: false,
     plugins: {
       legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } }
     }
   };
 
   return (
-    <div className="h-52 max-w-sm mx-auto flex items-center justify-center">
+    <div className="h-64 max-w-sm mx-auto flex items-center justify-center relative">
       {transactions.length > 0 ? <Doughnut data={data} options={options} /> : <p className="text-slate-400">No data to display</p>}
     </div>
   );

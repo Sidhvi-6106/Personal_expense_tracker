@@ -14,8 +14,11 @@ const BalanceCard = ({ title, amount, type }) => {
         </div>
         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</span>
       </div>
-      <div className="flex flex-col">
-        <h2 className="text-2xl font-bold text-slate-800">
+      <div className="flex flex-col overflow-hidden">
+        <h2 
+          className="text-xl lg:text-2xl font-bold text-slate-800 truncate"
+          title={formatCurrency(amount || 0)}
+        >
           {formatCurrency(amount || 0)}
         </h2>
         <p className="text-slate-400 text-xs mt-1">Updated just now</p>

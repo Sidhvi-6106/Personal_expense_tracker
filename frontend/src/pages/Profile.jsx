@@ -505,7 +505,7 @@ const Profile = () => {
 };
 
 const InputField = ({
-  icon: Icon,
+  icon,
   label,
   name,
   value,
@@ -514,6 +514,8 @@ const InputField = ({
   pageText,
   type = "text",
 }) => {
+  const IconComponent = icon;
+
   return (
     <div>
       <label className={`mb-2 block text-sm font-semibold ${pageText}`}>
@@ -521,7 +523,7 @@ const InputField = ({
       </label>
 
       <div className="relative">
-        <Icon
+        <IconComponent
           className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
           size={18}
         />

@@ -2,12 +2,14 @@ import { create } from "zustand";
 import axios from "axios";
 import toast from "react-hot-toast";
 
-const API_URL = import.meta.env.VITE_API_URL ;
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 const STORAGE_KEY = "expense-tracker-auth";
 const SETTINGS_KEY = "expense-tracker-settings";
 const BILLS_KEY = "expense-tracker-bills";
 const ALERTS_KEY = "expense-tracker-alerts";
+const CUSTOM_ALERTS_KEY = "expense-tracker-custom-alerts";
+const DISMISSED_ALERTS_KEY = "expense-tracker-dismissed-alerts";
 
 const readStorage = (key, fallback) => {
   try {
@@ -32,6 +34,7 @@ const storedSettings = readStorage(SETTINGS_KEY, {
 });
 
 const storedBills = readStorage(BILLS_KEY, []);
+const storedCustomAlerts = readStorage(CUSTOM_ALERTS_KEY, []);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -99,13 +102,14 @@ const calculateMonthlyExpenseTotal = (
 
 const buildBillAlerts = (billReminders) =>
   billReminders
+    .filter((bill) => !bill.paid)
     .map((bill) => {
       const remainingDays = daysUntil(
         bill.dueDate
       );
 
       return {
-        id: `bill-${bill.id}`,
+        id: `bill-${bill._id || bill.id}`,
 
         type: "bill",
 
@@ -129,6 +133,30 @@ const buildBillAlerts = (billReminders) =>
             ? "high"
             : "medium",
 
+        remainingDays
+      };
+    })
+    .filter((alert) => alert.remainingDays <= 3);
+
+const buildEmiAlerts = (emis) =>
+  emis
+    .filter((emi) => !emi.paid)
+    .map((emi) => {
+      const remainingDays = daysUntil(emi.dueDate);
+      const monthlyAmount = Math.round(emi.loanAmount / emi.tenureMonths);
+      return {
+        id: `emi-alert-${emi._id}`,
+        type: "emi",
+        title: "EMI Reminder",
+        message:
+          remainingDays < 0
+            ? `Your EMI of ₹${monthlyAmount} for ${emi.merchant || 'loan'} is overdue.`
+            : remainingDays === 0
+            ? `Your EMI of ₹${monthlyAmount} for ${emi.merchant || 'loan'} is due today.`
+            : `Your EMI of ₹${monthlyAmount} for ${emi.merchant || 'loan'} is due in ${remainingDays} day${remainingDays === 1 ? "" : "s"}.`,
+        dueDate: emi.dueDate,
+        amount: monthlyAmount,
+        severity: remainingDays <= 1 ? "high" : "medium",
         remainingDays
       };
     })
@@ -189,7 +217,7 @@ export const useFinanceContext = create(
     emis: [],
 
     billReminders: storedBills,
-
+    customAlerts: storedCustomAlerts,
     settings: storedSettings,
 
     notifications:
@@ -212,6 +240,12 @@ export const useFinanceContext = create(
 
     emiLoading: false,
 
+    isChatbotOpen: false,
+
+    toggleChatbot: () => set((state) => ({ isChatbotOpen: !state.isChatbotOpen })),
+
+    setChatbotOpen: (isOpen) => set({ isChatbotOpen: isOpen }),
+
     persistAuth: (user, token) => {
       localStorage.setItem(
         STORAGE_KEY,
@@ -223,6 +257,8 @@ export const useFinanceContext = create(
 
     clearAuth: () => {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ALERTS_KEY);
+      localStorage.removeItem(DISMISSED_ALERTS_KEY);
 
       set({
         user: null,
@@ -248,27 +284,32 @@ export const useFinanceContext = create(
         get().billReminders
       );
 
-      const budgetAlerts =
-        buildBudgetAlerts(
-          get().transactions,
-          get().user?.monthlyIncome || 0
-        );
+      const emiAlerts = buildEmiAlerts(get().emis);
 
-      const alerts = [
+      const budgetAlerts = buildBudgetAlerts(
+        get().transactions,
+        get().user?.monthlyIncome || 0
+      );
+
+      const allAlerts = [
         ...budgetAlerts,
-        ...billAlerts
-      ];
+        ...billAlerts,
+        ...emiAlerts,
+        ...(get().customAlerts || [])
+      ].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
 
-      set({ notifications: alerts });
+      const dismissedAlerts = readStorage(DISMISSED_ALERTS_KEY, []);
+      const activeAlerts = allAlerts.filter(a => !dismissedAlerts.includes(a.id));
+
+      set({ notifications: activeAlerts });
 
       if (!get().settings.notifications)
         return;
 
       const updatedSeen = [...seenAlerts];
-
       let changed = false;
 
-      alerts.forEach((alert) => {
+      activeAlerts.forEach((alert) => {
         if (!updatedSeen.includes(alert.id)) {
           toast(alert.message, {
             icon:
@@ -283,11 +324,134 @@ export const useFinanceContext = create(
         }
       });
 
+
       if (changed) {
         localStorage.setItem(
           ALERTS_KEY,
           JSON.stringify(updatedSeen)
         );
+      }
+    },
+
+    clearAllNotifications: () => {
+      const currentAlertIds = get().notifications.map(a => a.id);
+      const dismissedAlerts = readStorage(DISMISSED_ALERTS_KEY, []);
+      const newDismissed = [...new Set([...dismissedAlerts, ...currentAlertIds])];
+      localStorage.setItem(DISMISSED_ALERTS_KEY, JSON.stringify(newDismissed));
+      set({ notifications: [], customAlerts: [] });
+      localStorage.setItem(CUSTOM_ALERTS_KEY, JSON.stringify([]));
+    },
+
+    fetchBillReminders: async () => {
+      const { token } = get();
+      if (!token) return;
+      
+      try {
+        const res = await api.get("/bill-reminder-api/bill-reminder", authHeaders(token));
+        const bills = res.data.payload || [];
+        localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
+        set({ billReminders: bills });
+        get().refreshNotifications();
+      } catch (err) {
+        console.error("Failed to fetch bills", err);
+      }
+    },
+
+    addBillReminder: async (bill) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        const res = await api.post("/bill-reminder-api/bill-reminder", bill, authHeaders(token));
+        set((state) => {
+          const billReminders = [...state.billReminders, res.data.payload];
+          localStorage.setItem(BILLS_KEY, JSON.stringify(billReminders));
+          return { billReminders };
+        });
+        get().refreshNotifications();
+        toast.success("Bill reminder added");
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to add bill reminder");
+        return false;
+      }
+    },
+
+    updateBillReminder: async (id, updatedData) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        const res = await api.put(`/bill-reminder-api/bill-reminder/${id}`, updatedData, authHeaders(token));
+        const updatedBill = res.data.payload;
+        set((state) => {
+          const billReminders = state.billReminders.map((bill) => (bill._id === id ? updatedBill : bill));
+          localStorage.setItem(BILLS_KEY, JSON.stringify(billReminders));
+          return { billReminders };
+        });
+        get().refreshNotifications();
+        toast.success("Bill reminder updated");
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to update bill reminder");
+        return false;
+      }
+    },
+
+    removeBillReminder: async (id) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        await api.patch(`/bill-reminder-api/bill-reminder/${id}`, { isActive: false }, authHeaders(token));
+        set((state) => {
+          const billReminders = state.billReminders.filter((b) => b._id !== id);
+          localStorage.setItem(BILLS_KEY, JSON.stringify(billReminders));
+          return { billReminders };
+        });
+        get().refreshNotifications();
+        toast.success("Bill reminder removed");
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to remove bill reminder");
+        return false;
+      }
+    },
+
+    markBillPaid: async (id, paid) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        const bill = get().billReminders.find(b => b._id === id);
+        const res = await api.patch(`/bill-reminder-api/bill-reminder/pay/${id}`, { paid }, authHeaders(token));
+        const updatedBill = res.data.payload;
+
+        set((state) => {
+          const billReminders = state.billReminders.map((item) => 
+            item._id === id ? updatedBill : item
+          );
+          localStorage.setItem(BILLS_KEY, JSON.stringify(billReminders));
+          return { billReminders };
+        });
+        toast.success(paid ? "Bill paid and next due date updated" : "Bill marked as unpaid");
+
+        if (paid && bill) {
+          await get().addTransaction({
+            type: "expense",
+            amount: bill.amount,
+            category: bill.category || "Bills & Utilities",
+            description: `${bill.title} Payment`,
+            merchant: "Bill Reminder",
+            date: new Date().toISOString().split('T')[0]
+          });
+        }
+
+        get().refreshNotifications();
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to update bill");
+        return false;
       }
     },
 
@@ -403,6 +567,40 @@ fetchProfile: async () => {
   }
 },
 
+updateProfile: async (userData) => {
+  const { token } = get();
+  if (!token) return false;
+  
+  set({ savingProfile: true });
+  
+  try {
+    const res = await api.put(
+      "/auth-api/auth/profile",
+      userData,
+      authHeaders(token)
+    );
+    
+    set({ user: res.data.user });
+    
+    // Also update local storage so user persists on reload
+    const currentAuth = readStorage(STORAGE_KEY, null);
+    if (currentAuth) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        ...currentAuth,
+        user: res.data.user
+      }));
+    }
+
+    toast.success("Profile updated");
+    return true;
+  } catch (err) {
+    toast.error(err.response?.data?.message || "Failed to update profile");
+    return false;
+  } finally {
+    set({ savingProfile: false });
+  }
+},
+
     logout: async () => {
       const { token } = get();
 
@@ -413,7 +611,9 @@ fetchProfile: async () => {
             authHeaders(token)
           );
         }
-      } catch {}
+      } catch (err) {
+        console.error("Logout failed", err);
+      }
 
       get().clearAuth();
 
@@ -646,12 +846,32 @@ fetchProfile: async () => {
           authHeaders(token)
         );
 
+        const newEmi = res.data.payload;
         set((state) => ({
           emis: [
-            res.data.payload,
+            newEmi,
             ...state.emis
           ]
         }));
+        
+        // Add custom notification for EMI
+        const newAlert = {
+          id: `emi-${newEmi._id}-${Date.now()}`,
+          type: "emi-added",
+          title: "EMI Added",
+          message: `Your EMI for ${newEmi.merchant || 'loan'} has been added. Reminders will be sent before the due date.`,
+          dueDate: new Date().toISOString(),
+          severity: "medium",
+          remainingDays: 0
+        };
+        
+        set((state) => {
+          const updatedCustomAlerts = [newAlert, ...(state.customAlerts || [])].slice(0, 10);
+          localStorage.setItem(CUSTOM_ALERTS_KEY, JSON.stringify(updatedCustomAlerts));
+          return { customAlerts: updatedCustomAlerts };
+        });
+        
+        get().refreshNotifications();
 
         toast.success("EMI added");
 
@@ -665,6 +885,56 @@ fetchProfile: async () => {
         return false;
       } finally {
         set({ emiLoading: false });
+      }
+    },
+
+    updateEmi: async (id, updatedData) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        const payload = {
+          ...updatedData,
+          loanAmount: Number(updatedData.loanAmount),
+          interestRate: Number(updatedData.interestRate),
+          tenureMonths: Number(updatedData.tenureMonths)
+        };
+
+        const res = await api.put(`/emi-api/emi/${id}`, payload, authHeaders(token));
+        const updatedEmi = res.data.payload;
+
+        set((state) => ({
+          emis: state.emis.map((emi) => (emi._id === id ? updatedEmi : emi))
+        }));
+
+        get().refreshNotifications();
+        toast.success("EMI updated");
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to update EMI");
+        return false;
+      }
+    },
+
+    toggleEmi: async (id, isActive) => {
+      const { token } = get();
+      if (!token) return false;
+
+      try {
+        await api.patch(`/emi-api/emi/${id}`, { isActive }, authHeaders(token));
+
+        set((state) => ({
+          emis: isActive
+            ? state.emis
+            : state.emis.filter((emi) => emi._id !== id)
+        }));
+
+        get().refreshNotifications();
+        toast.success(isActive ? "EMI restored" : "EMI deleted");
+        return true;
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Failed to toggle EMI");
+        return false;
       }
     },
 
@@ -699,6 +969,26 @@ fetchProfile: async () => {
             ? "EMI marked as paid"
             : "EMI marked as unpaid"
         );
+
+        if (paid) {
+          const emi = get().emis.find(e => e._id === id);
+          if (emi) {
+            const monthlyAmount = Math.round(emi.loanAmount / emi.tenureMonths);
+            await get().addTransaction({
+              type: "expense",
+              amount: monthlyAmount,
+              category: "Bills & Utilities",
+              description: `EMI Payment`,
+              merchant: "EMI Tracker",
+              date: new Date().toISOString().split('T')[0]
+            });
+
+            // Auto-advance due date
+            const newDueDate = new Date(emi.dueDate);
+            newDueDate.setMonth(newDueDate.getMonth() + 1);
+            await get().updateEmi(id, { ...emi, dueDate: newDueDate, paid: false });
+          }
+        }
 
         return true;
       } catch (err) {

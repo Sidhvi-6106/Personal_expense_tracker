@@ -5,35 +5,11 @@ import ChartContainer from "../components/ChartContainer";
 import TransactionList from "../components/TransactionList";
 
 const Dashboard = () => {
-  const { user, transactions, notifications, emis } = useFinanceContext();
+  const { user, transactions, notifications } = useFinanceContext();
 
-  // Convert paid EMIs into transaction-like objects
-  const emiTransactions = useMemo(() => {
-    return emis
-      .filter((emi) => emi.paid)
-      .map((emi) => {
-        const monthlyInstallment =
-          (emi.loanAmount *
-            (emi.interestRate / 12 / 100) *
-            Math.pow(1 + emi.interestRate / 12 / 100, emi.tenureMonths)) /
-          (Math.pow(1 + emi.interestRate / 12 / 100, emi.tenureMonths) - 1);
-
-        return {
-          _id: `emi-${emi._id}`,
-          amount: monthlyInstallment,
-          category: "EMI",
-          type: "expense",
-          date: emi.paymentDate || new Date(),
-          merchant: "Loan EMI",
-          description: "Monthly EMI Payment"
-        };
-      });
-  }, [emis]);
-
-  // Merge normal transactions + EMI transactions
-  const allTransactions = useMemo(() => {
-    return [...transactions, ...emiTransactions];
-  }, [transactions, emiTransactions]);
+  // We now rely solely on 'transactions' state since paid EMIs and Bills 
+  // automatically create a transaction via the FinanceContext.
+  const allTransactions = transactions;
 
   const {
     totalExpenses,

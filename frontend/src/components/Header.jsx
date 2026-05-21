@@ -1,10 +1,8 @@
 import { NavLink, useNavigate } from "react-router";
+import { useFinanceContext } from "../context/FinanceContext";
 
 function Header() {
-//   const isAuthenticated = useAuth((state) => state.isAuthenticated);
-//   const user = useAuth((state) => state.currentUser);
-//   const logout = useAuth((state) => state.logout);
-
+  const { user, logout } = useFinanceContext();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -14,8 +12,7 @@ function Header() {
 
   // decide profile route based on role
   const getProfilePath = () => {
-    if (!user) return "/";
-    console.log("current user", user);
+    return user ? "/profile" : "/";
   };
 
   return (

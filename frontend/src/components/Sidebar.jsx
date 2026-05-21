@@ -28,7 +28,7 @@ const menuItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ mobile, onClose }) => {
   const logout = useFinanceContext((state) => state.logout);
   const settings = useFinanceContext((state) => state.settings);
 
@@ -43,11 +43,11 @@ const Sidebar = () => {
 
   return (
     <aside
-      className={`hidden md:flex w-72 border-r flex-col h-screen overflow-y-auto transition-colors ${
+      className={`${mobile ? "flex" : "hidden md:flex"} w-72 flex-col h-screen overflow-y-auto transition-colors ${
         isDark
           ? "bg-slate-950 border-slate-800"
           : "bg-white border-slate-200"
-      }`}
+      } ${!mobile ? "border-r" : ""}`}
     >
       <div
         className={`p-6 border-b transition-colors ${
@@ -71,6 +71,7 @@ const Sidebar = () => {
             <NavLink
               key={item.path}
               to={item.path}
+              onClick={() => mobile && onClose && onClose()}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
                   isActive

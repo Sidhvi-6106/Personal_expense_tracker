@@ -11,6 +11,7 @@ export default defineConfig({
       '/transactions-api': 'http://localhost:4000',
       '/emi-api': 'http://localhost:4000',
       '/ai-api': 'http://localhost:4000',
+      '/bill-reminder-api': 'http://localhost:4000',
     }
   }
 })

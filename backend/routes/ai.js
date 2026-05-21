@@ -1,10 +1,13 @@
 import exp from "express";
 import Groq from "groq-sdk";
 import EMI from "../models/EMI.js";
+import BillReminder from "../models/BillReminder.js";
 import Transaction from "../models/Transaction.js";
 import { checkUser } from "../middleware/checkUser.js";
+import dotenv from "dotenv";
 
 export const aiRouter = exp.Router();
+dotenv.config();
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const allowedCategories = [
@@ -222,10 +225,18 @@ Return ONLY valid JSON with no markdown.
         },
         {
           role: "user",
-          content: prompt
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData
+              }
+            }
+          ]
         }
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.2-11b-vision-preview",
       temperature: 0.3
     });
 
@@ -248,16 +259,20 @@ aiRouter.post("/chat-bot", checkUser, async (req, res) => {
       return res.status(400).json({ message: "Message is required" });
     }
 
-    const [transactions, emiList] = await Promise.all([
-  Transaction.find({ 
-    userId: req.user._id, 
-    $or: [{ isActive: true }, { isActive: { $exists: false } }]
-  }).sort({ date: -1 }),
-  EMI.find({ 
-    userId: req.user._id, 
-    $or: [{ isActive: true }, { isActive: { $exists: false } }]
-  }).sort({ dueDate: 1, createdAt: -1 })
-]);
+    const [transactions, emiList, billList] = await Promise.all([
+      Transaction.find({
+        userId: req.user._id,
+        $or: [{ isActive: true }, { isActive: { $exists: false } }]
+      }).sort({ date: -1 }),
+      EMI.find({
+        userId: req.user._id,
+        $or: [{ isActive: true }, { isActive: { $exists: false } }]
+      }).sort({ dueDate: 1, createdAt: -1 }),
+      BillReminder.find({
+        userId: req.user._id,
+        $or: [{ isActive: true }, { isActive: { $exists: false } }]
+      }).sort({ dueDate: 1, createdAt: -1 })
+    ]);
 
     const monthlyIncome = req.user.monthlyIncome || 0;
 
@@ -268,6 +283,20 @@ aiRouter.post("/chat-bot", checkUser, async (req, res) => {
     const totalExpenses = expenseTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const totalIncome = incomeTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const totalMonthlyEMI = emiList.reduce((sum, e) => sum + (e.loanAmount / e.tenureMonths), 0);
+    const monthlyBillBurden = billList
+      .filter((bill) => bill.frequency === "Monthly")
+      .reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+    const totalBillAmount = billList.reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+    const unpaidBills = billList.filter((bill) => !bill.paid);
+    const overdueBills = unpaidBills.filter((bill) => {
+      const dueDate = new Date(bill.dueDate);
+      const today = new Date();
+
+      dueDate.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0);
+
+      return dueDate < today;
+    });
 
     const categoryTotals = {};
     expenseTransactions.forEach(t => {
@@ -277,8 +306,8 @@ aiRouter.post("/chat-bot", checkUser, async (req, res) => {
     const topCategory = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1])[0];
     const expenseRatio = monthlyIncome > 0 ? Math.round((totalExpenses / monthlyIncome) * 100) : 0;
     const emiRatio = monthlyIncome > 0 ? Math.round((totalMonthlyEMI / monthlyIncome) * 100) : 0;
-    const overallUsage = monthlyIncome > 0 ? Math.round(((totalExpenses + totalMonthlyEMI) / monthlyIncome) * 100) : 0;
-    const netSavings = monthlyIncome - totalExpenses - Math.round(totalMonthlyEMI);
+    const overallUsage = monthlyIncome > 0 ? Math.round(((totalExpenses + totalMonthlyEMI + monthlyBillBurden) / monthlyIncome) * 100) : 0;
+    const netSavings = monthlyIncome - totalExpenses - Math.round(totalMonthlyEMI) - monthlyBillBurden;
 
     const systemPrompt = `
 You are a personal finance assistant for this user.
@@ -286,6 +315,7 @@ Use PRE-CALCULATED SUMMARY for all totals — never recalculate from raw transac
 Answer clearly and concisely in beginner friendly English.
 Always use ₹ symbol for amounts.
 If the user asks something unrelated to finance, politely say you only handle finance queries.
+If the user asks about bills, bill reminders, due dates, utilities, rent, subscriptions, or recurring payments, answer from BILL REMINDER DETAILS first. Do not confuse bill reminders with EMI records.
 
 USER PROFILE:
 - Username: ${req.user.username}
@@ -298,6 +328,10 @@ PRE-CALCULATED SUMMARY (use these, never recalculate):
 - Monthly EMI burden: ₹${Math.round(totalMonthlyEMI)}
 - Expense to income ratio: ${expenseRatio}%
 - EMI to income ratio: ${emiRatio}%
+- Monthly bill reminder burden: Rs.${monthlyBillBurden}
+- Total active bill reminder amount: Rs.${totalBillAmount}
+- Unpaid bill reminders: ${unpaidBills.length}
+- Overdue bill reminders: ${overdueBills.length}
 - Overall budget usage: ${overallUsage}%
 - Category wise spending: ${JSON.stringify(categoryTotals)}
 - Top spending category: ${topCategory?.[0] || "N/A"} (₹${topCategory?.[1] || 0})
@@ -339,6 +373,26 @@ EMI DETAILS:
         monthlyEMI: Math.round(e.loanAmount / e.tenureMonths),
         dueDate: new Date(e.dueDate).toLocaleDateString("en-IN"),
         paid: e.paid
+      }))
+    )}
+
+BILL REMINDER DETAILS:
+- Total bill reminders: ${billList.length}
+- Paid bill reminders: ${billList.filter((bill) => bill.paid).length}
+- Unpaid bill reminders: ${unpaidBills.length}
+- Overdue bill reminders: ${overdueBills.length}
+- Monthly bill burden: Rs.${monthlyBillBurden}
+- Bill reminder list: ${JSON.stringify(
+      billList.map((bill) => ({
+        title: bill.title,
+        category: bill.category,
+        amount: bill.amount,
+        frequency: bill.frequency,
+        dueDate: new Date(bill.dueDate).toLocaleDateString("en-IN"),
+        paid: bill.paid,
+        lastPaymentDate: bill.paymentDate
+          ? new Date(bill.paymentDate).toLocaleDateString("en-IN")
+          : null
       }))
     )}
 

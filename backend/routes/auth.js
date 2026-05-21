@@ -94,9 +94,12 @@ authRouter.post("/auth/login", async (req, res) => {
       { expiresIn: "1d" }
     );
 
+    const isProduction = process.env.NODE_ENV === "production";
+
     res.cookie("token", token, {
       httpOnly: true,
-      sameSite: "strict"
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction
     });
 
     res.json({

@@ -9,74 +9,79 @@ import {
 } from "lucide-react";
 import { useFinanceContext } from "../context/FinanceContext";
 
+const ToggleRow = ({
+  icon,
+  title,
+  description,
+  checked,
+  onChange,
+  isDark,
+}) => {
+  const IconComponent = icon;
+
+  return (
+  <div
+    className={`flex items-start justify-between gap-4 rounded-2xl border p-5 shadow-sm transition-colors ${
+      isDark
+        ? "bg-slate-900 border-slate-700"
+        : "bg-white border-slate-100"
+    }`}
+  >
+    <div className="flex gap-4">
+      <div
+        className={`rounded-xl p-3 ${
+          isDark
+            ? "bg-slate-800 text-indigo-400"
+            : "bg-indigo-50 text-indigo-600"
+        }`}
+      >
+        <IconComponent size={18} />
+      </div>
+
+      <div>
+        <h3
+          className={`font-semibold ${
+            isDark ? "text-white" : "text-slate-800"
+          }`}
+        >
+          {title}
+        </h3>
+
+        <p
+          className={`text-sm ${
+            isDark ? "text-slate-400" : "text-slate-500"
+          }`}
+        >
+          {description}
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={onChange}
+      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+        checked
+          ? "bg-indigo-600"
+          : isDark
+          ? "bg-slate-700"
+          : "bg-slate-200"
+      }`}
+    >
+      <span
+        className={`inline-block h-5 w-5 transform rounded-full bg-white transition duration-200 ease-in-out ${
+          checked ? "translate-x-6" : "translate-x-1"
+        }`}
+      />
+    </button>
+  </div>
+  );
+};
+
 const Setting = () => {
   const { settings, updateSettings } = useFinanceContext();
 
   const isDark = settings.theme === "dark";
-
-  const ToggleRow = ({
-    icon: Icon,
-    title,
-    description,
-    checked,
-    onChange,
-  }) => (
-    <div
-      className={`flex items-start justify-between gap-4 rounded-2xl border p-5 shadow-sm transition-colors ${
-        isDark
-          ? "bg-slate-900 border-slate-700"
-          : "bg-white border-slate-100"
-      }`}
-    >
-      <div className="flex gap-4">
-        <div
-          className={`rounded-xl p-3 ${
-            isDark
-              ? "bg-slate-800 text-indigo-400"
-              : "bg-indigo-50 text-indigo-600"
-          }`}
-        >
-          <Icon size={18} />
-        </div>
-
-        <div>
-          <h3
-            className={`font-semibold ${
-              isDark ? "text-white" : "text-slate-800"
-            }`}
-          >
-            {title}
-          </h3>
-
-          <p
-            className={`text-sm ${
-              isDark ? "text-slate-400" : "text-slate-500"
-            }`}
-          >
-            {description}
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onChange}
-        className={`relative h-7 w-12 rounded-full transition-colors ${
-          checked
-            ? "bg-indigo-600"
-            : isDark
-            ? "bg-slate-700"
-            : "bg-slate-200"
-        }`}
-      >
-        <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white transition-transform ${
-            checked ? "translate-x-6" : "translate-x-1"
-          }`}
-        />
-      </button>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
@@ -185,6 +190,7 @@ const Setting = () => {
             title="AI Suggestions"
             description="Show expense-management recommendations inside analytics."
             checked={settings.showAIInsights}
+            isDark={isDark}
             onChange={() =>
               updateSettings({
                 showAIInsights: !settings.showAIInsights,
@@ -201,6 +207,7 @@ const Setting = () => {
             title="Push Notifications"
             description="Enable reminder and alert banners inside the app."
             checked={settings.notifications}
+            isDark={isDark}
             onChange={() =>
               updateSettings({
                 notifications: !settings.notifications,
@@ -214,6 +221,7 @@ const Setting = () => {
             title="Email Summaries"
             description="Keep this on if you want future weekly summary support."
             checked={settings.emailSummaries}
+            isDark={isDark}
             onChange={() =>
               updateSettings({
                 emailSummaries: !settings.emailSummaries,

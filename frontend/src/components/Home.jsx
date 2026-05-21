@@ -5,11 +5,11 @@ import { cn } from '../utils/cn';
 import { formatCurrency } from '../utils/currencyFormatter';
 
 const Home = () => {
-  const { user, aiInsights, fetchAIStats, transactions } = useFinanceContext();
+  const { user, aiInsights, fetchAIInsights, transactions } = useFinanceContext();
 
   useEffect(() => {
-    fetchAIStats();
-  }, []);
+    fetchAIInsights();
+  }, [fetchAIInsights]);
 
   // Fallback data if AI API is still warming up
   const stats = aiInsights || {

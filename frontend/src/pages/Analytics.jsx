@@ -14,56 +14,25 @@ const monthKey = (value) => {
   ).padStart(2, "0")}`;
 };
 
-const calculateEMI = (loanAmount, interestRate, tenureMonths) => {
-  const monthlyRate = interestRate / 12 / 100;
-
-  return (
-    (loanAmount *
-      monthlyRate *
-      Math.pow(1 + monthlyRate, tenureMonths)) /
-    (Math.pow(1 + monthlyRate, tenureMonths) - 1)
-  );
-};
-
 const Analytics = () => {
   const {
     transactions,
     fetchTransactions,
     fetchAIInsights,
     aiInsights,
-    user,
-    emis
+    user
   } = useFinanceContext();
 
   useEffect(() => {
     fetchTransactions();
     fetchAIInsights();
-  }, []);
+  }, [fetchAIInsights, fetchTransactions]);
 
   const analytics = useMemo(() => {
 
-    const emiTransactions = emis
-      .filter((emi) => emi.paid)
-      .map((emi) => ({
-        _id: `emi-${emi._id}`,
-        amount: calculateEMI(
-          emi.loanAmount,
-          emi.interestRate,
-          emi.tenureMonths
-        ),
-        category: "EMI",
-        type: "expense",
-        date: emi.paymentDate || new Date(),
-        merchant: "Loan EMI",
-        description: "Monthly EMI Payment"
-      }));
-
-    const expensesOnly = [
-      ...transactions.filter(
-        (item) => item.type !== "income"
-      ),
-      ...emiTransactions
-    ];
+    const expensesOnly = transactions.filter(
+      (item) => item.type !== "income"
+    );
 
     const incomeOnly = transactions.filter(
       (item) => item.type === "income"
@@ -164,7 +133,7 @@ const Analytics = () => {
       budgetUsage
     };
 
-  }, [transactions, emis, user]);
+  }, [transactions, user]);
 
   return (
     <div className="space-y-6">

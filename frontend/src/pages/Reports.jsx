@@ -17,46 +17,22 @@ const formatMonthLabel = (value) => new Date(`${value}-01`).toLocaleDateString("
 });
 
 const Reports = () => {
-  const { transactions, user, emis } = useFinanceContext();
+  const { transactions, user } = useFinanceContext();
   const monthOptions = useMemo(() => {
-    const emiTransactions = emis
-      .filter((emi) => emi.paid)
-      .map((emi) => ({
-        date: emi.paymentDate || new Date()
-    }));
-
-    return getMonthOptions([...transactions, ...emiTransactions]);
-  }, [transactions, emis]);
-  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]);
+    return getMonthOptions(transactions);
+  }, [transactions]);
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0] || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`);
+  const activeMonth = monthOptions.includes(selectedMonth)
+    ? selectedMonth
+    : monthOptions[0];
 
   const report = useMemo(() => {
-    const emiTransactions = emis
-      .filter((emi) => emi.paid)
-      .map((emi) => {
-
-    const monthlyInstallment =
-      (emi.loanAmount *
-        (emi.interestRate / 12 / 100) *
-        Math.pow(1 + emi.interestRate / 12 / 100, emi.tenureMonths)) /
-      (Math.pow(1 + emi.interestRate / 12 / 100, emi.tenureMonths) - 1);
-
-    return {
-      _id: emi._id,
-      amount: monthlyInstallment,
-      category: "EMI",
-      type: "expense",
-      date: emi.paymentDate || new Date(),
-      merchant: "Loan EMI",
-      description: "Monthly EMI Payment"
-    };
-  });
-
-    const allTransactions = [...transactions, ...emiTransactions];
+    const allTransactions = [...transactions];
 
     const filtered = allTransactions.filter((item) => {
       const date = new Date(item.date);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      return key === selectedMonth;
+      return key === activeMonth;
     });
 
     const expenses = filtered.filter((item) => item.type !== "income");
@@ -77,7 +53,7 @@ const Reports = () => {
     totalIncome:(user?.monthlyIncome || 0) + incomeTotal,
     byCategory
   };
-  }, [selectedMonth, transactions, emis, user?.monthlyIncome]);
+  }, [activeMonth, transactions, user?.monthlyIncome]);
 
   const exportReport = () => {
     const rows = [
@@ -99,7 +75,7 @@ const Reports = () => {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `financial-report-${selectedMonth}.csv`;
+    link.download = `financial-report-${activeMonth}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -112,7 +88,7 @@ const Reports = () => {
           <p className="text-sm text-slate-500">Filter reports month by month and export them as CSV.</p>
         </div>
         <div className="flex gap-3">
-          <select className="rounded-xl border border-slate-200 px-4 py-2 bg-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+          <select className="rounded-xl border border-slate-200 px-4 py-2 bg-white" value={activeMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
             {monthOptions.map((option) => (
               <option key={option} value={option}>{formatMonthLabel(option)}</option>
             ))}
@@ -141,7 +117,7 @@ const Reports = () => {
       </div>
 
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="font-bold mb-4">Category Breakdown for {formatMonthLabel(selectedMonth)}</h3>
+        <h3 className="font-bold mb-4">Category Breakdown for {formatMonthLabel(activeMonth)}</h3>
         {Object.entries(report.byCategory).length ? (
           Object.entries(report.byCategory)
             .sort((a, b) => b[1] - a[1])
