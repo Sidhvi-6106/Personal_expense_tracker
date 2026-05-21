@@ -16,9 +16,10 @@ import {
 
 import { Link } from "react-router-dom";
 import { useFinanceContext } from "../context/FinanceContext";
+import { API_BASE_URL } from "../utils/apiBase";
 
 const Profile = () => {
-  const { user, updateProfile, savingProfile } = useFinanceContext();
+  const { user, token, updateProfile, savingProfile } = useFinanceContext();
 
   const settings = useFinanceContext((state) => state.settings);
 
@@ -93,7 +94,7 @@ const Profile = () => {
     setPasswordLoading(true);
 
     const res = await axios.put(
-      "http://localhost:4000/auth-api/auth/change-password",
+      `${API_BASE_URL}/auth-api/auth/change-password`,
       {
         currentPassword:
           passwordForm.currentPassword,
@@ -103,6 +104,11 @@ const Profile = () => {
       },
       {
         withCredentials: true,
+        headers: token
+          ? {
+              Authorization: `Bearer ${token}`,
+            }
+          : {},
       }
     );
 
@@ -422,6 +428,7 @@ const Profile = () => {
 
                 <input
                   type="password"
+                  autoComplete="current-password"
                   value={passwordForm.currentPassword}
                   onChange={(e) =>
                     setPasswordForm({
@@ -442,6 +449,7 @@ const Profile = () => {
 
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={passwordForm.newPassword}
                   onChange={(e) =>
                     setPasswordForm({
@@ -462,6 +470,7 @@ const Profile = () => {
 
                 <input
                   type="password"
+                  autoComplete="new-password"
                   value={passwordForm.confirmPassword}
                   onChange={(e) =>
                     setPasswordForm({

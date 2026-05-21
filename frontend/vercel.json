@@ -3,6 +3,26 @@
     {
       "source": "/auth-api/:path*",
       "destination": "https://personal-expense-tracker-3dge.onrender.com/auth-api/:path*"
+    },
+    {
+      "source": "/transactions-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/transactions-api/:path*"
+    },
+    {
+      "source": "/emi-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/emi-api/:path*"
+    },
+    {
+      "source": "/bill-reminder-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/bill-reminder-api/:path*"
+    },
+    {
+      "source": "/analytics-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/analytics-api/:path*"
+    },
+    {
+      "source": "/ai-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/ai-api/:path*"
     }
   ]
 }

@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import axios from "axios";
 import toast from "react-hot-toast";
-
-const API_URL = import.meta.env.VITE_API_URL || "";
+import { API_BASE_URL } from "../utils/apiBase";
 
 const STORAGE_KEY = "expense-tracker-auth";
 const SETTINGS_KEY = "expense-tracker-settings";
@@ -37,7 +36,7 @@ const storedBills = readStorage(BILLS_KEY, []);
 const storedCustomAlerts = readStorage(CUSTOM_ALERTS_KEY, []);
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true
 });
 

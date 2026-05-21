@@ -33,6 +33,7 @@ const Login = () => {
             <label className="text-sm font-medium text-slate-700 ml-1">Email</label>
             <input
               type="email"
+              autoComplete="email"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all mt-1"
               placeholder="name@gmail.com"
               value={email}
@@ -44,6 +45,7 @@ const Login = () => {
             <label className="text-sm font-medium text-slate-700 ml-1">Password</label>
             <input
               type="password"
+              autoComplete="current-password"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all mt-1"
               placeholder="Password"
               value={password}

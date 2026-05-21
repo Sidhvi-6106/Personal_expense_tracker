@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { X, Send, Bot, User, Loader2 } from "lucide-react";
 import axios from "axios";
 import { useFinanceContext } from "../context/FinanceContext";
+import { API_BASE_URL } from "../utils/apiBase";
 
 const Chatbot = ({ onClose }) => {
   const { token, settings } = useFinanceContext();
@@ -42,9 +43,8 @@ const Chatbot = ({ onClose }) => {
     setLoading(true);
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || '';
       const res = await axios.post(
-        `${API_URL}/ai-api/chat-bot`,
+        `${API_BASE_URL}/ai-api/chat-bot`,
         { message: userMessage.content },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -56,10 +56,15 @@ const Chatbot = ({ onClose }) => {
         ...prev,
         { role: "assistant", content: res.data.payload.reply }
       ]);
-    } catch {
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I encountered an error connecting to the AI service." }
+        {
+          role: "assistant",
+          content:
+            err.response?.data?.message ||
+            "Sorry, I encountered an error connecting to the AI service."
+        }
       ]);
     } finally {
       setLoading(false);

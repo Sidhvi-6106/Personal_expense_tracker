@@ -36,6 +36,7 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
+            autoComplete="username"
             placeholder="Username"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.username}
@@ -44,6 +45,7 @@ const Register = () => {
           />
           <input
             type="email"
+            autoComplete="email"
             placeholder="Email Address"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.email}
@@ -52,6 +54,7 @@ const Register = () => {
           />
           <input
             type="password"
+            autoComplete="new-password"
             placeholder="Password"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.password}
@@ -60,6 +63,7 @@ const Register = () => {
           />
           <input
             type="tel"
+            autoComplete="tel"
             placeholder="Phone Number"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.number}
