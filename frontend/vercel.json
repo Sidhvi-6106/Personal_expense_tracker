@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/auth-api/:path*",
+      "destination": "https://personal-expense-tracker-3dge.onrender.com/auth-api/:path*"
+    }
+  ]
+}
