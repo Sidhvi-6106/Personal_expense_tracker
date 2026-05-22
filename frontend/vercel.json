@@ -23,6 +23,10 @@
     {
       "source": "/ai-api/:path*",
       "destination": "https://personal-expense-tracker-3dge.onrender.com/ai-api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

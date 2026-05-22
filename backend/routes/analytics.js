@@ -354,7 +354,7 @@ analyticsRouter.get('/quick-health', checkUser, async (req, res) => {
         userId,
         isActive: true
       }).sort({ date: -1 }),
-      EMI.find({ userId })
+      EMI.find({ userId, isActive: true })
     ])
 
     const { metrics, interpretations } = calculateMetrics(user, transactions, emis)

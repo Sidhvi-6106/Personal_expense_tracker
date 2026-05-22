@@ -40,13 +40,24 @@ const api = axios.create({
   withCredentials: true
 });
 
-const authHeaders = (token) => ({
-  headers: token
-    ? {
-        Authorization: `Bearer ${token}`
-      }
-    : {}
-});
+const SESSION_TOKEN = "cookie-session";
+
+const authHeaders = () => ({});
+
+const calculateMonthlyEmi = (loanAmount, annualRate, tenureMonths) => {
+  const principal = Number(loanAmount || 0);
+  const months = Number(tenureMonths || 0);
+  const monthlyRate = Number(annualRate || 0) / 12 / 100;
+
+  if (!principal || !months) return 0;
+  if (!monthlyRate) return principal / months;
+
+  return (
+    principal *
+    monthlyRate *
+    Math.pow(1 + monthlyRate, months)
+  ) / (Math.pow(1 + monthlyRate, months) - 1);
+};
 
 const applyTheme = (theme) => {
   document.documentElement.classList.remove("dark");
@@ -142,7 +153,9 @@ const buildEmiAlerts = (emis) =>
     .filter((emi) => !emi.paid)
     .map((emi) => {
       const remainingDays = daysUntil(emi.dueDate);
-      const monthlyAmount = Math.round(emi.loanAmount / emi.tenureMonths);
+      const monthlyAmount = Math.round(
+        calculateMonthlyEmi(emi.loanAmount, emi.interestRate, emi.tenureMonths)
+      );
       return {
         id: `emi-alert-${emi._id}`,
         type: "emi",
@@ -209,7 +222,7 @@ export const useFinanceContext = create(
   (set, get) => ({
     user: storedAuth?.user || null,
 
-    token: storedAuth?.token || null,
+    token: storedAuth?.user ? SESSION_TOKEN : null,
 
     transactions: [],
 
@@ -243,13 +256,13 @@ export const useFinanceContext = create(
 
     setChatbotOpen: (isOpen) => set({ isChatbotOpen: isOpen }),
 
-    persistAuth: (user, token) => {
+    persistAuth: (user) => {
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ user, token })
+        JSON.stringify({ user })
       );
 
-      set({ user, token });
+      set({ user, token: SESSION_TOKEN });
     },
 
     clearAuth: () => {
@@ -437,7 +450,7 @@ export const useFinanceContext = create(
           await get().addTransaction({
             type: "expense",
             amount: bill.amount,
-            category: bill.category || "Bills & Utilities",
+            category: bill.category || "Utilities",
             description: `${bill.title} Payment`,
             merchant: "Bill Reminder",
             date: new Date().toISOString().split('T')[0]
@@ -476,7 +489,6 @@ export const useFinanceContext = create(
       set({ authLoading: true });
 
       try {
-        console.log("backend called")
         await api.post("/auth-api/auth", {
           ...userData,
           monthlyIncome: Number(
@@ -511,8 +523,7 @@ export const useFinanceContext = create(
     );
 
     get().persistAuth(
-      res.data.user,
-      res.data.token
+      res.data.user
     );
 
     toast.success(
@@ -941,51 +952,43 @@ updateProfile: async (userData) => {
       if (!token) return false;
 
       try {
-        await api.patch(
+        const res = await api.patch(
           `/emi-api/emi/pay/${id}`,
           { paid },
           authHeaders(token)
         );
+        const updatedEmi = res.data.payload;
 
         set((state) => ({
           emis: state.emis.map((emi) =>
-            emi._id === id
-              ? {
-                  ...emi,
-                  paid,
-                  paymentDate: paid
-                    ? new Date().toISOString()
-                    : null
-                }
-              : emi
+            emi._id === id ? updatedEmi : emi
           )
         }));
 
         toast.success(
           paid
-            ? "EMI marked as paid"
+            ? "EMI paid and next due date updated"
             : "EMI marked as unpaid"
         );
 
         if (paid) {
           const emi = get().emis.find(e => e._id === id);
           if (emi) {
-            const monthlyAmount = Math.round(emi.loanAmount / emi.tenureMonths);
+            const monthlyAmount = Math.round(
+              calculateMonthlyEmi(emi.loanAmount, emi.interestRate, emi.tenureMonths)
+            );
             await get().addTransaction({
               type: "expense",
               amount: monthlyAmount,
-              category: "Bills & Utilities",
+              category: "Utilities",
               description: `EMI Payment`,
               merchant: "EMI Tracker",
               date: new Date().toISOString().split('T')[0]
             });
-
-            // Auto-advance due date
-            const newDueDate = new Date(emi.dueDate);
-            newDueDate.setMonth(newDueDate.getMonth() + 1);
-            await get().updateEmi(id, { ...emi, dueDate: newDueDate, paid: false });
           }
         }
+
+        get().refreshNotifications();
 
         return true;
       } catch (err) {

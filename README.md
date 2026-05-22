@@ -21,7 +21,7 @@ expense-tracker/
 | UI Helpers | lucide-react icons, react-hot-toast |
 | Backend | Node.js, Express 5 |
 | Database | MongoDB with Mongoose |
-| Auth | JWT, bcryptjs, HTTP-only cookie support |
+| Auth | JWT, bcryptjs, HTTP-only cookie sessions |
 | AI | Groq SDK and Groq OpenAI-compatible API |
 | Deployment | Vercel frontend rewrites, Render backend |
 

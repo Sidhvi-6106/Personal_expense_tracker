@@ -17,6 +17,21 @@ const groq = process.env.GROQ_API_KEY
 const formatMoney = (amount) =>
   `Rs.${Math.round(Number(amount || 0)).toLocaleString("en-IN")}`;
 
+const calculateEMI = (principal, annualRate, months) => {
+  const loanAmount = Number(principal || 0);
+  const tenureMonths = Number(months || 0);
+  const monthlyRate = Number(annualRate || 0) / 12 / 100;
+
+  if (!loanAmount || !tenureMonths) return 0;
+  if (!monthlyRate) return loanAmount / tenureMonths;
+
+  return (
+    loanAmount *
+    monthlyRate *
+    Math.pow(1 + monthlyRate, tenureMonths)
+  ) / (Math.pow(1 + monthlyRate, tenureMonths) - 1);
+};
+
 const getDaysUntil = (dateValue) => {
   const today = new Date();
   const target = new Date(dateValue);
@@ -204,7 +219,7 @@ const getUserFinanceData = async (userId) => {
     0
   );
   const totalMonthlyEMI = emiList.reduce(
-    (sum, item) => sum + Number(item.loanAmount || 0) / Number(item.tenureMonths || 1),
+    (sum, item) => sum + calculateEMI(item.loanAmount, item.interestRate, item.tenureMonths),
     0
   );
   const monthlyBillBurden = billList
@@ -419,7 +434,7 @@ EMI DETAILS:
     loanAmount: emi.loanAmount,
     interestRate: emi.interestRate,
     tenureMonths: emi.tenureMonths,
-    monthlyEMI: Math.round(Number(emi.loanAmount || 0) / Number(emi.tenureMonths || 1)),
+    monthlyEMI: Math.round(calculateEMI(emi.loanAmount, emi.interestRate, emi.tenureMonths)),
     dueDate: new Date(emi.dueDate).toLocaleDateString("en-IN"),
     paid: emi.paid
   }))

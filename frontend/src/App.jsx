@@ -7,7 +7,7 @@ import AddTransaction from "./pages/AddTransaction";
 import TransactionHistory from "./pages/TransactionHistory";
 import Analytics from "./pages/Analytics";
 import EMITracker from "./pages/EMITracker";
-import BillReminder from "./pages/BillRemainder";
+import BillReminder from "./pages/BillReminder";
 import Profile from "./pages/Profile";
 import Setting from "./pages/Setting";
 import Reports from "./pages/Reports";

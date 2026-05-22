@@ -32,6 +32,17 @@ const getValidationMessage = (err) => {
   return firstError?.message || err.message || "Invalid account details";
 };
 
+const serializeUser = (user) => ({
+  id: user._id,
+  username: user.username,
+  email: user.email,
+  number: user.number,
+  monthlyIncome: user.monthlyIncome,
+  occupation: user.occupation,
+  city: user.city,
+  currency: user.currency
+});
+
 const validateAccountInput = ({ username, email, password, number, monthlyIncome }, { requirePassword = true } = {}) => {
   const cleanUsername = normalizeUsername(username);
   const cleanEmail = normalizeEmail(email);
@@ -122,7 +133,7 @@ authRouter.post("/auth", async (req, res) => {
 
     res.status(201).json({
       message: "User Created Successfully",
-      payload: newUser
+      user: serializeUser(newUser)
     });
 
   } catch (err) {
@@ -182,20 +193,7 @@ authRouter.post("/auth/login", async (req, res) => {
 
     res.json({
       message: "Login Successful",
-
-      token,
-
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        number: user.number,
-        monthlyIncome: user.monthlyIncome,
-
-        occupation: user.occupation,
-        city: user.city,
-        currency: user.currency,
-      }
+      user: serializeUser(user)
     });
 
   } catch (err) {
@@ -403,8 +401,6 @@ authRouter.get("/logout", checkUser, async (req, res) => {
   try {
 
     res.clearCookie("token");
-
-    console.log(req?.body?.user + " logged out ");
 
     return res.status(200).json({
       message: "User logged out"

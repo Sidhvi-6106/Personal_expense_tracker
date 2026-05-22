@@ -4,32 +4,46 @@ import { checkUser } from '../middleware/checkUser.js'
 
 export const transactionRouter = exp.Router()
 
+const sanitizeTransactionPayload = (body = {}) => ({
+  amount: Number(body.amount),
+  category: body.category,
+  type: body.type,
+  date: body.date,
+  description: body.description,
+  merchant: body.merchant
+});
+
+const validateTransactionPayload = ({ amount, category, date }) => {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return "Amount must be a positive number";
+  }
+
+  if (!category) {
+    return "Category is required";
+  }
+
+  if (!date || Number.isNaN(new Date(date).getTime())) {
+    return "Valid date is required";
+  }
+
+  return null;
+};
+
 // add transaction
 transactionRouter.post('/transactions', checkUser, async (req, res) => {
 
   try {
 
-    const {
-      amount,
-      category,
-      type,
-      date,
-      description,
-      merchant
-    } = req.body;
+    const payload = sanitizeTransactionPayload(req.body);
+    const validationError = validateTransactionPayload(payload);
 
-    if(amount <= 0){
+    if(validationError){
       return res.status(400).json({
-      message:"Amount must be positive"
+      message: validationError
    })
 }
     const newTransaction = new Transaction({
-      amount,
-      category,
-      type,
-      date,
-      description,
-      merchant, 
+      ...payload,
       userId: req.user._id
     });
 
@@ -41,8 +55,6 @@ transactionRouter.post('/transactions', checkUser, async (req, res) => {
     });
 
   } catch (err) {
-
-    console.log(err.message);
 
     res.status(400).json({
       message: "Failed to add transaction",
@@ -130,18 +142,16 @@ transactionRouter.put('/transactions/:id',checkUser,async(req,res)=>{
         message: "Unauthorized access"
       });
     }
-    console.log("body : ",req.body);
-    // const updatedTransaction=await Transaction.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const payload = sanitizeTransactionPayload(req.body);
+    const validationError = validateTransactionPayload(payload);
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
     const updatedTransaction = await Transaction.findByIdAndUpdate(
       req.params.id,
-        {
-          amount: req.body.amount,
-          category: req.body.category,
-          type: req.body.type,
-          date: req.body.date,
-          description: req.body.description,
-          merchant: req.body.merchant,
-        },
+        payload,
         { new: true }
     )
      if (!updatedTransaction) {
@@ -149,7 +159,6 @@ transactionRouter.put('/transactions/:id',checkUser,async(req,res)=>{
     }
     return res.status(200).json({message:"transaction updated ",payload:updatedTransaction})
   }catch(err){
-    console.log("error ",err.message);
     return res.status(400).json({message :err.message});
   }
 })
@@ -175,8 +184,6 @@ transactionRouter.patch('/transactions/:id',checkUser,async(req,res)=>{
     if(transaction.isActive===isActive){
        return res.status(400).json({ message: `Transaction is already ${isActive ? "active" : "deleted"}`});
     }
-
-    console.log("body : ",req.body);
     const deletedTransaction=await Transaction.findByIdAndUpdate(req.params.id,{isActive:isActive}, { new: true })
      if (!deletedTransaction) {
       return res.status(404).json({ message: "Transaction not found" });
@@ -184,7 +191,6 @@ transactionRouter.patch('/transactions/:id',checkUser,async(req,res)=>{
     res.status(200).json({message: `Transaction ${isActive ? "restored" : "deleted"} successfully`,payload: deletedTransaction});
 
   } catch(err) {
-    console.log("error ",err.message);
     return res.status(400).json({message :err.message});
   }
 })

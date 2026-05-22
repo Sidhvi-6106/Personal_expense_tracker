@@ -22,6 +22,10 @@ const emiSchema=new Schema({
         type:Date,
         required:true
     },
+    merchant: {
+        type: String,
+        default: "Loan"
+    },
     isActive:{
         type:Boolean,
         default:true

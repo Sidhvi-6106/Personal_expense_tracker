@@ -19,7 +19,7 @@ import { useFinanceContext } from "../context/FinanceContext";
 import { API_BASE_URL } from "../utils/apiBase";
 
 const Profile = () => {
-  const { user, token, updateProfile, savingProfile } = useFinanceContext();
+  const { user, updateProfile, savingProfile } = useFinanceContext();
 
   const settings = useFinanceContext((state) => state.settings);
 
@@ -104,11 +104,6 @@ const Profile = () => {
       },
       {
         withCredentials: true,
-        headers: token
-          ? {
-              Authorization: `Bearer ${token}`,
-            }
-          : {},
       }
     );
 
@@ -123,10 +118,6 @@ const Profile = () => {
     setShowPasswordModal(false);
 
   } catch (err) {
-
-    console.log(err.response?.data);
-    console.log(err);
-
     alert(
       err?.response?.data?.message ||
       err.message ||

@@ -194,7 +194,7 @@ Stores title, category, amount, due date, frequency, paid status, active status,
 
 - Passwords are hashed with bcryptjs before storage.
 - Protected routes use `checkUser` middleware.
-- JWT tokens are accepted through the `Authorization: Bearer <token>` header and login also sets a cookie.
+- Login sets the JWT in an HTTP-only cookie; the frontend stores only safe user/session state.
 - CORS allows local Vite origins and the configured `FRONTEND_URL`.
 - In production, cookies use `sameSite: "none"` and `secure: true`.
 

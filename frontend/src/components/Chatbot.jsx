@@ -5,7 +5,7 @@ import { useFinanceContext } from "../context/FinanceContext";
 import { API_BASE_URL } from "../utils/apiBase";
 
 const Chatbot = ({ onClose }) => {
-  const { token, settings } = useFinanceContext();
+  const { settings } = useFinanceContext();
   const [messages, setMessages] = useState(() => {
     const saved = sessionStorage.getItem("chatbot-messages");
     if (saved) return JSON.parse(saved);
@@ -47,7 +47,6 @@ const Chatbot = ({ onClose }) => {
         `${API_BASE_URL}/ai-api/chat-bot`,
         { message: userMessage.content },
         {
-          headers: { Authorization: `Bearer ${token}` },
           withCredentials: true
         }
       );

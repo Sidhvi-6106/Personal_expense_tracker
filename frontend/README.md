@@ -53,7 +53,7 @@ frontend/
     pages/
       AddTransaction.jsx
       Analytics.jsx
-      BillRemainder.jsx
+      BillReminder.jsx
       Dashboard.jsx
       EMITracker.jsx
       History.jsx

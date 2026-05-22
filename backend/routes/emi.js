@@ -10,8 +10,16 @@ const sanitizeEmiPayload = (body = {}) => ({
   tenureMonths: Number(body.tenureMonths),
   startDate: body.startDate,
   dueDate: body.dueDate,
+  ...(body.merchant !== undefined && { merchant: body.merchant }),
+  ...(typeof body.paid === "boolean" && { paid: body.paid }),
   isActive: typeof body.isActive === "boolean" ? body.isActive : true
 });
+
+const getNextMonthlyDueDate = (dueDate) => {
+  const nextDueDate = new Date(dueDate);
+  nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+  return nextDueDate;
+};
 
 emiRouter.post("/emi", checkUser, async (req, res) => {
   try {
@@ -49,6 +57,54 @@ emiRouter.get("/emi", checkUser, async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       message: "Failed to fetch EMI records"
+    });
+  }
+});
+
+// mark emi paid / unpaid
+emiRouter.patch("/emi/pay/:id", checkUser, async (req, res) => {
+  try {
+    const emi = await EMI.findById(req.params.id);
+
+    if (!emi) {
+      return res.status(404).json({
+        message: "EMI not found"
+      });
+    }
+
+    if (emi.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        message: "Unauthorized access"
+      });
+    }
+
+    const paid = req.body.paid === true;
+
+    const updatedEmi = await EMI.findByIdAndUpdate(
+      req.params.id,
+      paid
+        ? {
+            paid: false,
+            paymentDate: new Date(),
+            lastReminder: null,
+            dueDate: getNextMonthlyDueDate(emi.dueDate)
+          }
+        : {
+            paid: false,
+            paymentDate: null,
+            lastReminder: new Date()
+          },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      message: paid ? "EMI paid and next due date updated" : "EMI marked unpaid",
+      payload: updatedEmi
+    });
+
+  } catch (err) {
+    return res.status(400).json({
+      message: err.message
     });
   }
 });
@@ -107,50 +163,6 @@ emiRouter.patch("/emi/:id", checkUser, async (req, res) => {
   } catch (err) {
     return res.status(400).json({
       message: err.message || "Failed to update EMI"
-    });
-  }
-});
-
-// mark emi paid / unpaid
-emiRouter.patch("/emi/pay/:id", checkUser, async (req, res) => {
-  console.log("PAY ROUTE HIT");
-  console.log(req.body);
-  console.log(req.params.id);
-  try {
-    const emi = await EMI.findById(req.params.id);
-
-    if (!emi) {
-      return res.status(404).json({
-        message: "EMI not found"
-      });
-    }
-
-    if (emi.userId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({
-        message: "Unauthorized access"
-      });
-    }
-
-    const { paid } = req.body;
-
-    const updatedEmi = await EMI.findByIdAndUpdate(
-      req.params.id,
-      {
-        paid,
-        paymentDate: paid ? new Date() : null,
-        lastReminder: !paid ? new Date() : null
-      },
-      { new: true }
-    );
-
-    return res.status(200).json({
-      message: paid ? "EMI marked as paid" : "EMI marked unpaid",
-      payload: updatedEmi
-    });
-
-  } catch (err) {
-    return res.status(400).json({
-      message: err.message
     });
   }
 });
