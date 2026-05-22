@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ScanLine } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useFinanceContext } from "../context/FinanceContext";
-import toast from "react-hot-toast";
 
 const categories = [
   "Food",
@@ -17,61 +16,22 @@ const categories = [
   "Other"
 ];
 
-const readFileAsDataUrl = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
 const defaultForm = {
   amount: "",
   category: "Food",
   type: "expense",
   date: new Date().toISOString().split("T")[0],
   description: "",
-  merchant: "",
-  receipt: null
+  merchant: ""
 };
 
 const TransactionForm = () => {
-  const { addTransaction, loading, scanReceipt, scanningReceipt } = useFinanceContext();
+  const { addTransaction, loading } = useFinanceContext();
   const navigate = useNavigate();
   const [formData, setFormData] = useState(defaultForm);
 
   const handleChange = (key, value) => {
     setFormData((current) => ({ ...current, [key]: value }));
-  };
-
-  const handleScanReceipt = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file for receipt scanning.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Receipt image must be 5 MB or smaller.");
-      return;
-    }
-
-    const imageData = await readFileAsDataUrl(file);
-    const scanned = await scanReceipt(imageData, file.name);
-    if (!scanned) return;
-
-    setFormData((current) => ({
-      ...current,
-      ...scanned,
-      amount: scanned.amount || current.amount,
-      category: scanned.category || current.category,
-      type: scanned.type || current.type,
-      date: scanned.date || current.date,
-      description: scanned.description || current.description,
-      merchant: scanned.merchant || current.merchant
-    }));
   };
 
   const handleSubmit = async (e) => {
@@ -151,16 +111,6 @@ const TransactionForm = () => {
             onChange={(e) => handleChange("merchant", e.target.value)}
           />
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Scan Receipt</label>
-          <label className="w-full p-3 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 flex items-center justify-center gap-2 cursor-pointer hover:border-indigo-400 transition-colors">
-            <ScanLine size={18} className="text-indigo-600" />
-            <span className="text-sm font-medium text-slate-700">
-              {scanningReceipt ? "Scanning..." : "Upload receipt image"}
-            </span>
-            <input type="file" accept="image/*" className="hidden" onChange={handleScanReceipt} />
-          </label>
-        </div>
       </div>
 
       <div>
@@ -174,18 +124,8 @@ const TransactionForm = () => {
         />
       </div>
 
-      {formData.receipt?.extractedText ? (
-        <div className="rounded-2xl bg-emerald-50 border border-emerald-100 p-4">
-          <p className="text-sm font-semibold text-emerald-800">Receipt extracted</p>
-          <p className="text-xs text-emerald-700 mt-1 line-clamp-3">{formData.receipt.extractedText}</p>
-          <p className="text-xs text-emerald-700 mt-2">
-            Confidence: {typeof formData.receipt.confidence === "number" ? `${Math.round(formData.receipt.confidence * 100)}%` : "Not provided"}
-          </p>
-        </div>
-      ) : null}
-
       <button
-        disabled={loading || scanningReceipt}
+        disabled={loading}
         className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 flex items-center justify-center disabled:opacity-70"
       >
         {loading ? <Loader2 className="animate-spin mr-2" /> : null}

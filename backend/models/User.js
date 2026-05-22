@@ -1,28 +1,33 @@
-// User model for the Personal Expense Tracker application
-// Importing mongoose to define the schema and model
 import { model, Schema } from 'mongoose';
-import bcrypt from 'bcryptjs';
-// Define the User schema
+
 const userSchema = new Schema({
   username: {
     type: String,
-    required: [true,"Username is required"],
-    unique: true
+    required: [true, "Username is required"],
+    unique: true,
+    trim: true,
+    minlength: [3, "Username must be at least 3 characters"],
+    maxlength: [30, "Username must be 30 characters or less"],
+    match: [/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"]
   },
   email: {
     type: String,
-    required: [true,"Email is Required"],
-    unique:[true, "Duplicate email not allowed"]
+    required: [true, "Email is required"],
+    unique: true,
+    lowercase: true,
+    trim: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/, "Enter a valid email address"]
   },
 
-  //we need to hash the password before saving it to the database, so we will use bcryptjs for that
   password: {
     type: String,
-    required: [true,"Password is Required "],
+    required: [true, "Password is required"],
   },
   number: {
     type: String,
     required: [true, "Phone Number is Required"],
+    unique: true,
+    trim: true,
     validate: {
       validator: v => /^[6-9][0-9]{9}$/.test(v),
       message: "Enter a valid 10-digit Indian phone number"
@@ -30,7 +35,8 @@ const userSchema = new Schema({
   },
   monthlyIncome: {
     type: Number,
-    required: true
+    required: [true, "Monthly income is required"],
+    min: [0, "Monthly income cannot be negative"]
   },
   occupation: {
     type: String,

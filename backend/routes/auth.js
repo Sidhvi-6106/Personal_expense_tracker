@@ -6,16 +6,83 @@ import bcrypt from "bcryptjs";
 
 export const authRouter = exp.Router();
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const phoneRegex = /^[6-9][0-9]{9}$/;
+const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+
+const normalizeEmail = (email = "") => String(email).trim().toLowerCase();
+const normalizeUsername = (username = "") => String(username).trim();
+const normalizePhone = (number = "") => String(number).trim();
+
+const getDuplicateMessage = (err) => {
+  if (err?.code !== 11000) return null;
+
+  if (err.keyPattern?.username) return "Username already taken";
+  if (err.keyPattern?.email) return "Email already registered";
+  if (err.keyPattern?.number) return "Phone number already registered";
+
+  return "Account details already exist";
+};
+
+const getValidationMessage = (err) => {
+  const duplicateMessage = getDuplicateMessage(err);
+  if (duplicateMessage) return duplicateMessage;
+
+  const firstError = err?.errors ? Object.values(err.errors)[0] : null;
+  return firstError?.message || err.message || "Invalid account details";
+};
+
+const validateAccountInput = ({ username, email, password, number, monthlyIncome }, { requirePassword = true } = {}) => {
+  const cleanUsername = normalizeUsername(username);
+  const cleanEmail = normalizeEmail(email);
+  const cleanPhone = normalizePhone(number);
+  const income = Number(monthlyIncome);
+
+  if (!usernameRegex.test(cleanUsername)) {
+    return "Username must be 3-30 characters and can only contain letters, numbers, and underscores";
+  }
+
+  if (email !== undefined && !emailRegex.test(cleanEmail)) {
+    return "Enter a valid email address";
+  }
+
+  if (number !== undefined && !phoneRegex.test(cleanPhone)) {
+    return "Enter a valid 10-digit Indian phone number";
+  }
+
+  if (monthlyIncome !== undefined && (!Number.isFinite(income) || income < 0)) {
+    return "Monthly income cannot be negative";
+  }
+
+  if (requirePassword && (!password || String(password).length < 6)) {
+    return "Password must be at least 6 characters";
+  }
+
+  return null;
+};
 
 // Register
 authRouter.post("/auth", async (req, res) => {
   try {
-    console.log("auth : ",req.body);
-    const { username, email, password } = req.body;
+    const username = normalizeUsername(req.body.username);
+    const email = normalizeEmail(req.body.email);
+    const number = normalizePhone(req.body.number);
+    const { password } = req.body;
+    const monthlyIncome = Number(req.body.monthlyIncome);
+
+    const validationError = validateAccountInput({
+      username,
+      email,
+      password,
+      number,
+      monthlyIncome
+    });
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
 
     const HashedPass = await bcrypt.hash(String(password), 10);
-
-    console.log("req body in register:", req.body);
 
     // check username
     const existingUsername = await User.findOne({ username });
@@ -35,9 +102,21 @@ authRouter.post("/auth", async (req, res) => {
       });
     }
 
+    const existingPhone = await User.findOne({ number });
+
+    if (existingPhone) {
+      return res.status(400).json({
+        message: "Phone number already registered"
+      });
+    }
+
     // create user
     const newUser = await User.create({
       ...req.body,
+      username,
+      email,
+      number,
+      monthlyIncome,
       password: HashedPass,
     });
 
@@ -48,10 +127,8 @@ authRouter.post("/auth", async (req, res) => {
 
   } catch (err) {
 
-    console.error("Registration Error:", err);
-
-    res.status(500).json({
-      message: "Registration failed",
+    res.status(400).json({
+      message: getValidationMessage(err),
       error: err.message
     });
 
@@ -64,7 +141,8 @@ authRouter.post("/auth/login", async (req, res) => {
 
   try {
 
-    const { email, password } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const { password } = req.body;
 
     // check user
     const user = await User.findOne({ email });
@@ -172,13 +250,45 @@ authRouter.put("/auth/profile", checkUser, async (req, res) => {
   try {
 
     const {
-      username,
       monthlyIncome,
-      number,
       occupation,
       city,
       currency,
     } = req.body;
+    const username = normalizeUsername(req.body.username);
+    const number = normalizePhone(req.body.number);
+    const income = Number(monthlyIncome);
+
+    const validationError = validateAccountInput(
+      {
+        username,
+        number,
+        monthlyIncome: income
+      },
+      { requirePassword: false }
+    );
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
+    const existingUsername = await User.findOne({
+      username,
+      _id: { $ne: req.user._id }
+    });
+
+    if (existingUsername) {
+      return res.status(400).json({ message: "Username already taken" });
+    }
+
+    const existingPhone = await User.findOne({
+      number,
+      _id: { $ne: req.user._id }
+    });
+
+    if (existingPhone) {
+      return res.status(400).json({ message: "Phone number already registered" });
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
@@ -188,7 +298,7 @@ authRouter.put("/auth/profile", checkUser, async (req, res) => {
           ...(username && { username }),
 
           ...(monthlyIncome !== undefined && {
-            monthlyIncome
+            monthlyIncome: income
           }),
 
           ...(number && { number }),
@@ -226,7 +336,7 @@ authRouter.put("/auth/profile", checkUser, async (req, res) => {
   } catch (err) {
 
     res.status(400).json({
-      message: err.message
+      message: getValidationMessage(err)
     });
 
   }

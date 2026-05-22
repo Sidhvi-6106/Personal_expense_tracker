@@ -14,20 +14,6 @@ const groq = process.env.GROQ_API_KEY
   ? new Groq({ apiKey: process.env.GROQ_API_KEY })
   : null;
 
-const allowedCategories = [
-  "Food",
-  "Shopping",
-  "Travel",
-  "Utilities",
-  "Health",
-  "Entertainment",
-  "Electronics",
-  "Rent",
-  "Salary",
-  "Other",
-  "EMI"
-];
-
 const formatMoney = (amount) =>
   `Rs.${Math.round(Number(amount || 0)).toLocaleString("en-IN")}`;
 
@@ -109,36 +95,6 @@ const buildHeuristicSuggestions = ({ monthlyIncome, transactions }) => {
   };
 };
 
-const normalizeReceiptPayload = (parsed = {}, filename = "") => {
-  const safeAmount = Number(parsed.amount);
-  const safeDate =
-    parsed.date && !Number.isNaN(new Date(parsed.date).getTime())
-      ? new Date(parsed.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0];
-  const safeCategory = allowedCategories.includes(parsed.category)
-    ? parsed.category
-    : "Other";
-
-  if (!safeAmount || safeAmount <= 0) {
-    throw new Error("Invalid receipt amount");
-  }
-
-  return {
-    filename,
-    merchant: String(parsed.merchant || "").trim(),
-    amount: Number(safeAmount.toFixed(2)),
-    date: safeDate,
-    category: safeCategory,
-    description: String(parsed.description || "").trim(),
-    type: parsed.type === "income" ? "income" : "expense",
-    receipt: {
-      filename,
-      extractedText: String(parsed.extractedText || "").trim(),
-      confidence: typeof parsed.confidence === "number" ? parsed.confidence : null
-    }
-  };
-};
-
 const buildChatbotFallback = ({
   message,
   monthlyIncome,
@@ -215,6 +171,11 @@ const buildChatbotFallback = ({
     "Ask me specifically about bills, EMIs, expenses, income, or categories for a detailed breakdown."
   ].join("\n");
 };
+
+const isFinanceProjectQuestion = (message = "") =>
+  /finance|expense|expenses|income|salary|budget|transaction|transactions|spend|spending|emi|loan|installment|bill|bills|reminder|due|utility|utilities|rent|subscription|category|saving|savings|profile|account|password|dashboard|report|analytics|summary|notification|notifications/i.test(
+    message
+  );
 
 const getUserFinanceData = async (userId) => {
   const [transactions, emiList, billList] = await Promise.all([
@@ -362,70 +323,23 @@ Transactions: ${JSON.stringify(simplifiedTransactions)}
   }
 });
 
-aiRouter.post("/scan-receipt", checkUser, async (req, res) => {
-  try {
-    const { imageData, filename } = req.body;
-
-    if (!imageData) {
-      return res.status(400).json({ message: "Receipt image is required" });
-    }
-
-    if (!groq) {
-      return res.status(503).json({
-        message: "Receipt scanning needs GROQ_API_KEY configured on the backend"
-      });
-    }
-
-    const prompt = `
-Extract receipt details from the provided image.
-Return ONLY valid JSON:
-{
-  "merchant": "",
-  "amount": 0,
-  "date": "",
-  "category": "",
-  "description": "",
-  "type": "expense",
-  "extractedText": "",
-  "confidence": 0.95
-}
-`;
-
-    const chatCompletion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: "You are a receipt parser. Return ONLY valid JSON." },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: imageData } }
-          ]
-        }
-      ],
-      model: "llama-3.2-11b-vision-preview",
-      temperature: 0.3
-    });
-
-    const raw = chatCompletion.choices[0]?.message?.content || "";
-    const parsed = extractJson(raw);
-
-    return res.status(200).json({
-      message: "Receipt scanned successfully",
-      payload: normalizeReceiptPayload(parsed, filename || "")
-    });
-  } catch (err) {
-    return res.status(400).json({
-      message: err.message || "Failed to scan receipt"
-    });
-  }
-});
-
 aiRouter.post("/chat-bot", checkUser, async (req, res) => {
   try {
     const { message } = req.body;
 
     if (!message) {
       return res.status(400).json({ message: "Message is required" });
+    }
+
+    if (!isFinanceProjectQuestion(message)) {
+      return res.status(200).json({
+        message: "Chatbot response generated",
+        payload: {
+          source: "guardrail",
+          reply:
+            "I can only help with this expense tracker project: transactions, income, bills, EMIs, budgets, reports, analytics, profile, and notifications."
+        }
+      });
     }
 
     const data = await getUserFinanceData(req.user._id);

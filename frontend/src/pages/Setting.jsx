@@ -21,13 +21,13 @@ const ToggleRow = ({
 
   return (
   <div
-    className={`flex items-start justify-between gap-4 rounded-2xl border p-5 shadow-sm transition-colors ${
+    className={`flex flex-col gap-4 rounded-2xl border p-5 shadow-sm transition-colors sm:flex-row sm:items-start sm:justify-between ${
       isDark
         ? "bg-slate-900 border-slate-700"
         : "bg-white border-slate-100"
     }`}
   >
-    <div className="flex gap-4">
+    <div className="flex min-w-0 gap-4">
       <div
         className={`rounded-xl p-3 ${
           isDark
@@ -38,7 +38,7 @@ const ToggleRow = ({
         <IconComponent size={18} />
       </div>
 
-      <div>
+        <div className="min-w-0">
         <h3
           className={`font-semibold ${
             isDark ? "text-white" : "text-slate-800"
@@ -60,7 +60,7 @@ const ToggleRow = ({
     <button
       type="button"
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center self-end rounded-full transition-colors sm:self-auto ${
         checked
           ? "bg-indigo-600"
           : isDark

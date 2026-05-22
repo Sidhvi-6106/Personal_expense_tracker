@@ -295,6 +295,10 @@ const Profile = () => {
                 onChange={handleChange}
                 inputClass={inputClass}
                 pageText={pageText}
+                minLength="3"
+                maxLength="30"
+                pattern="[A-Za-z0-9_]+"
+                title="Username can only contain letters, numbers, and underscores"
               />
 
               <InputField
@@ -305,6 +309,7 @@ const Profile = () => {
                 onChange={handleChange}
                 inputClass={inputClass}
                 pageText={pageText}
+                disabled
               />
 
               <InputField
@@ -315,6 +320,8 @@ const Profile = () => {
                 onChange={handleChange}
                 inputClass={inputClass}
                 pageText={pageText}
+                pattern="[6-9][0-9]{9}"
+                title="Enter a valid 10-digit Indian phone number"
               />
 
               <InputField
@@ -325,6 +332,7 @@ const Profile = () => {
                 onChange={handleChange}
                 inputClass={inputClass}
                 pageText={pageText}
+                min="0"
               />
 
               <InputField
@@ -522,6 +530,12 @@ const InputField = ({
   inputClass,
   pageText,
   type = "text",
+  min,
+  minLength,
+  maxLength,
+  pattern,
+  title,
+  disabled = false,
 }) => {
   const IconComponent = icon;
 
@@ -542,7 +556,13 @@ const InputField = ({
           name={name}
           value={value}
           onChange={onChange}
-          className={`w-full rounded-2xl border py-3 pl-11 pr-4 outline-none ${inputClass}`}
+          min={min}
+          minLength={minLength}
+          maxLength={maxLength}
+          pattern={pattern}
+          title={title}
+          disabled={disabled}
+          className={`w-full rounded-2xl border py-3 pl-11 pr-4 outline-none disabled:cursor-not-allowed disabled:opacity-70 ${inputClass}`}
         />
       </div>
     </div>

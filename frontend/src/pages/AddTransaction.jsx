@@ -24,7 +24,7 @@ const AddTransaction = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Add Transaction</h1>
-              <p className="text-slate-500 text-sm">Record income, expenses, or auto-fill details from a receipt scan.</p>
+              <p className="text-slate-500 text-sm">Record income and expenses with clean manual entry.</p>
             </div>
           </div>
 
@@ -36,9 +36,9 @@ const AddTransaction = () => {
             <Sparkles size={18} className="text-indigo-300" />
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-indigo-200">Smart workflow</p>
           </div>
-          <h2 className="text-2xl font-bold leading-tight">Use AI to reduce manual entry.</h2>
+          <h2 className="text-2xl font-bold leading-tight">Keep every entry consistent.</h2>
           <ul className="mt-6 space-y-4 text-sm text-slate-300">
-            <li>Upload a receipt image and the app can extract merchant, amount, date, and category.</li>
+            <li>Add merchant, amount, category, and date in one focused form.</li>
             <li>Switch between expense and income so analytics stay accurate.</li>
             <li>Saved transactions appear immediately in history, dashboard, and AI insights.</li>
           </ul>

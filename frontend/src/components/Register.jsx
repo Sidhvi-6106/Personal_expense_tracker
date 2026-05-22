@@ -37,6 +37,10 @@ const Register = () => {
           <input
             type="text"
             autoComplete="username"
+            minLength="3"
+            maxLength="30"
+            pattern="[A-Za-z0-9_]+"
+            title="Username can only contain letters, numbers, and underscores"
             placeholder="Username"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.username}
@@ -64,6 +68,8 @@ const Register = () => {
           <input
             type="tel"
             autoComplete="tel"
+            pattern="[6-9][0-9]{9}"
+            title="Enter a valid 10-digit Indian phone number"
             placeholder="Phone Number"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.number}
@@ -72,6 +78,7 @@ const Register = () => {
           />
           <input
             type="number"
+            min="0"
             placeholder="Monthly Income"
             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
             value={formData.monthlyIncome}

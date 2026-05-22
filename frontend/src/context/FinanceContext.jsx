@@ -233,8 +233,6 @@ export const useFinanceContext = create(
 
     authLoading: false,
 
-    scanningReceipt: false,
-
     savingProfile: false,
 
     emiLoading: false,
@@ -1064,41 +1062,5 @@ updateProfile: async (userData) => {
       }
     },
 
-    scanReceipt: async (
-      imageData,
-      filename
-    ) => {
-      const { token } = get();
-
-      if (!token) return null;
-
-      set({ scanningReceipt: true });
-
-      try {
-        const res = await api.post(
-          "/ai-api/scan-receipt",
-          {
-            imageData,
-            filename
-          },
-          authHeaders(token)
-        );
-
-        toast.success(
-          "Receipt scanned successfully"
-        );
-
-        return res.data.payload;
-      } catch (err) {
-        toast.error(
-          err.response?.data?.message ||
-            "Receipt scan failed"
-        );
-
-        return null;
-      } finally {
-        set({ scanningReceipt: false });
-      }
-    }
   })
 );
